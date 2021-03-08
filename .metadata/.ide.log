@@ -8,6 +8,7 @@
 2021-03-08 07:37:40,318 [INFO] DbBoardsPdsc:57 - Set plugin database path to: C:\ST\STM32CubeIDE_1.5.1\STM32CubeIDE\plugins\com.st.stm32cube.common.mx_6.1.1.202012091304\\db\/plugins/boardmanager/
 2021-03-08 07:37:40,318 [INFO] DbMcus:259 - Set plugin images path to: C:\ST\STM32CubeIDE_1.5.1\STM32CubeIDE\plugins\com.st.stm32cube.common.mx_6.1.1.202012091304\\db\/plugins/mcufinder/images/
 2021-03-08 07:37:40,318 [INFO] DbBoards:265 - Set plugin images path to: C:\ST\STM32CubeIDE_1.5.1\STM32CubeIDE\plugins\com.st.stm32cube.common.mx_6.1.1.202012091304\\db\/plugins/mcufinder/images/
+2021-03-08 07:37:40,322 [INFO] DbExamples:329 - Set plugin images path to: C:\ST\STM32CubeIDE_1.5.1\STM32CubeIDE\plugins\com.st.stm32cube.common.mx_6.1.1.202012091304\\db\/plugins/mcufinder/images/
 2021-03-08 07:37:40,326 [INFO] DbMcusDocs:112 - Set database path to: C:\Users\maytu\.stmcufinder\plugins\mcufinder//mcu/
 2021-03-08 07:37:40,330 [INFO] DbMcusJson:63 - Set database path to: C:\Users\maytu\.stmcufinder\plugins\mcufinder//mcu/
 2021-03-08 07:37:40,334 [INFO] DbBoardsDocs:112 - Set database path to: C:\Users\maytu\.stmcufinder\plugins\mcufinder//mcu/
