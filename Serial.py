@@ -1,9 +1,8 @@
 import serial
-import crc16
 
 # INIT UART PORT
-# Grinex = serial.Serial(port='COM5', timeout=None, baudrate=2000000,
-#                         xonxoff=0, rtscts=0, bytesize=8, parity='N', stopbits=1)
+Grinex = serial.Serial(port='COM5', timeout=None, baudrate=2000000,
+                        xonxoff=0, rtscts=0, bytesize=8, parity='N', stopbits=1)
 
 # CHECK UART PORT IS OPEN
 try:
@@ -19,6 +18,7 @@ Position_Robot_Task = [0, 0, 0, 0]
 Position_Robot_Joint = [0, 0, 0, 0]
 abs_Position_Robot_Joint = [0, 0, 0, 0]
 abs_Position_Robot_Task = [0, 0, 0, 0]
+Traj_coef = [0,0,0,0,0,0]  #c0,c1,c2,c3,c4,c5 
 
 # INPUT DATA FROM USER FUNCTION
 def Get_Data_From_User():
@@ -34,10 +34,12 @@ def Get_Data_From_User():
     if(User_Command == str(1)):
         Instruction.append(1)
         print(Get_Tx_Package([Instruction]))
+        Grinex.write(serial.to_byte(Get_Tx_Package([Instruction])))
     # Set Home
     elif(User_Command == str(2)):
         Instruction.append(2)
         print(Get_Tx_Package([Instruction]))
+        Grinex.write(serial.to_byte(Get_Tx_Package([Instruction])))
     # Ping Mode
     elif(User_Command == str(3)):
         Instruction.append(3)
@@ -46,11 +48,13 @@ def Get_Data_From_User():
             print('Ping Mode Enable\n')
             Parameter.append(int(1))
             print(Get_Tx_Package([Instruction], [Parameter]))
+            Grinex.write(serial.to_byte(Get_Tx_Package([Instruction],[Paremeter])))
         else:
             Ping_Flag = 0
             Parameter.append(int(0))
             print('Ping Mode Disable\n')
             print(Get_Tx_Package([Instruction], [Parameter]))
+            Grinex.write(serial.to_byte(Get_Tx_Package([Instruction],[Parameter])))
     # Jog Joint
     elif(User_Command == str(4)):
         JogJoint()
@@ -63,15 +67,9 @@ def Get_Data_From_User():
     # Trajectory Move
     elif(User_Command == str(7)):
         Instruction.append(7)
-
-        Traj = input('Do you want to use Trajectory ? (Y/N) : ')
-        if(Traj.lower() == 'y'):
-            Traj_flag = 1
-            Parameter.append(int(Traj_flag))
-        else:
-            Parameter.append(int(Traj_flag))
-
-        
+        global Traj_coef
+        print(Get_Tx_Package([Instruction],[Traj_coef]))
+        Grinex.write(serial.to_byte(Get_Tx_Package([Instruction],[Traj_coef])))
     else:
         print('Invalid Command Please Try Agian')
 
@@ -136,6 +134,7 @@ def JogJoint():
                 abs_Position_Robot_Joint = [abs(int(Position_Robot_Joint[0])), abs(int(Position_Robot_Joint[1])), abs(int(Position_Robot_Joint[2])), abs(int(Position_Robot_Joint[3]))]
                 
                 print(Get_Tx_Package([Instruction], [Joint_signed,abs_Position_Robot_Joint]))
+                Grinex.write(serial.to_byte(Get_Tx_Package([Instruction], [Joint_signed,abs_Position_Robot_Joint])))
             Jog_state = 0
         elif(Jog_state == str(2)):
             print('Select Resolution of step Menu\nNOTE : Joint 1 2 4 is Revolute Joint(degree) and Joint 3 is Prismatic Joint(mm)')
@@ -223,6 +222,7 @@ def JogCartesian():
                 #print('Task sign = '+ str(Task_signed) )
                 abs_Position_Robot_Task = [abs(int(Position_Robot_Task[0])), abs(int(Position_Robot_Task[1])), abs(int(Position_Robot_Task[2])), abs(int(Position_Robot_Task[3]))]
                 print(Get_Tx_Package([Instruction], [Task_signed, abs_Position_Robot_Task]))
+                Grinex.write(serial.to_byte(Get_Tx_Package([Instruction], [Task_signed, abs_Position_Robot_Task])))
             Jog_state = 0
         elif(Jog_state == str(2)):
             print('Select Resolution of step Menu\nNOTE : X Y Z is position in Taskspace with Respect to Frame 0 (mm) and Rotz is Thetha is rotage Joint 4 (degree)')
@@ -248,13 +248,19 @@ def JogCartesian():
             Jog_state = 0
 # Move
 def Move():
+
+    global abs_Position_Robot_Joint
+    global abs_Position_Robot_Task
     Instruction = [6]
     Type_flag = [0]
     Type_list = ['Configuration Variables','Taskspace Variables']
     Type_of_Input = 0
     Move_state = 0
     Moving = 0
+    joint_signed = 0
+    Task_signed = 0
     Parameter = []
+
     while(Move_state != str(99)):
         print('Move Menu\nPlease select Input Before Start Move (Defult : Joint space) ')
         print('Your Select Input : ' + Type_list[Type_flag[0]])
@@ -277,7 +283,17 @@ def Move():
                         for i in range(0, 4):
                             Joint_Config_Input = input('Joint '+str(i) + ': ')
                             Parameter.append(int(Joint_Config_Input))
-                        print(Get_Tx_Package([Instruction], [Parameter]))
+                        for i in range(0,4):
+                            if(Position_Robot_Joint[i] > 0):
+                                Joint_signed = (1 << (3-i)) | Joint_signed
+                                #print('i = '+str(i) + '  ' + str(Task_signed))
+                            else:
+                                joint_signed = (15-(1 << (3-i))) & Joint_signed
+                                #print('i = '+str(i) + '  ' + str(Task_signed))
+                                #print('Task sign = '+ str(Task_signed) )
+                        abs_Position_Robot_Joint = [abs(int(Parameter[0])), abs(int(Parameter[1])), abs(int(Parameter[2])), abs(int(Parameter[3]))]
+                        print(Get_Tx_Package([Instruction], [joint_signed,Parameter]))
+                        Grinex.write(serial.to_byte(Get_Tx_Package([Instruction], [joint_signed,Parameter])))
                     except:
                         print('Invalid Parameter\n')
                         pass
@@ -288,7 +304,17 @@ def Move():
                         for i in Task_variable:
                             Task__Input = input('Position in ' + i + ' : ')
                             Parameter.append(int(Task__Input))
-                        print(Get_Tx_Package([Instruction], [Parameter]))
+                        for i in range(0,4):
+                            if(Position_Robot_Joint[i] > 0):
+                                Task_signed = (1 << (3-i)) | Task_signed
+                                #print('i = '+str(i) + '  ' + str(Task_signed))
+                            else:
+                                Task_signed = (15-(1 << (3-i))) & Task_signed
+                                #print('i = '+str(i) + '  ' + str(Task_signed))
+                                #print('Task sign = '+ str(Task_signed) )
+                        abs_Position_Robot_Task = [abs(int(Parameter[0])), abs(int(Parameter[1])), abs(int(Parameter[2])), abs(int(Parameter[3]))]
+                        print(Get_Tx_Package([Instruction], [Task_signed,Parameter]))
+                        Grinex.write(serial.to_byte(Get_Tx_Package([Instruction], [Task_signed,Parameter])))
                     except:
                         print('Invalid Parameter\n')
                         pass
@@ -398,6 +424,28 @@ def Update_CRC(Result = 0,Target_Data = 0):
 
     return Result
 
+# WAIT ACKNOWLEDGE 
+def Recieve_Rx_Package():
+    Recieve_Package = []
+    Rx_package = []
+    while(Grinex.in_waiting < 4):
+        pass
+    Rx_package = Grinex.readline(4)
+        Rx_package_.append(Grinex.readline(Rx_package[1]-2))
+        try:
+            for i in range(0,len(Rx_package)):
+                for j in range(0,len(Rx_package[i])):
+                    Recieve_Package.append(int(Rx_package[i][j]))
+        except:
+             for i in range(0,len(Rx_package)):
+                Recieve_Package.append(int(Rx_package[i]))
+        Rx_crc = (Recieve_Package[len(Recieve_Package)-2] << 8) + Recieve_Package[len(Recieve_Package)-1]
+        Result_crc = Update_CRC(0,Recieve_Package)
+        if(Rx_crc == Result_crc):
+            return Recieve_Package
+        else:
+            Recieve_Package = []
+    
 if __name__ == "__main__":
     while(1):
         try:
