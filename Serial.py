@@ -1,8 +1,11 @@
 import serial
 
-# INIT UART PORT
-Grinex = serial.Serial(port='COM5', timeout=None, baudrate=2000000,
+try:
+# INIT UART PORT    
+    Grinex = serial.Serial(port='COM5', timeout=None, baudrate=2000000,
                         xonxoff=0, rtscts=0, bytesize=8, parity='N', stopbits=1)
+except:
+    pass
 
 # CHECK UART PORT IS OPEN
 try:
@@ -431,20 +434,20 @@ def Recieve_Rx_Package():
     while(Grinex.in_waiting < 4):
         pass
     Rx_package = Grinex.readline(4)
-        Rx_package_.append(Grinex.readline(Rx_package[1]-2))
-        try:
-            for i in range(0,len(Rx_package)):
-                for j in range(0,len(Rx_package[i])):
-                    Recieve_Package.append(int(Rx_package[i][j]))
-        except:
-             for i in range(0,len(Rx_package)):
-                Recieve_Package.append(int(Rx_package[i]))
-        Rx_crc = (Recieve_Package[len(Recieve_Package)-2] << 8) + Recieve_Package[len(Recieve_Package)-1]
-        Result_crc = Update_CRC(0,Recieve_Package)
-        if(Rx_crc == Result_crc):
-            return Recieve_Package
-        else:
-            Recieve_Package = []
+    Rx_package.append(Grinex.readline(Rx_package[1]-2))
+    try:
+        for i in range(0,len(Rx_package)):
+            for j in range(0,len(Rx_package[i])):
+                Recieve_Package.append(int(Rx_package[i][j]))
+    except:
+        for i in range(0,len(Rx_package)):
+            Recieve_Package.append(int(Rx_package[i]))
+    Rx_crc = (Recieve_Package[len(Recieve_Package)-2] << 8) + Recieve_Package[len(Recieve_Package)-1]
+    Result_crc = Update_CRC(0,Recieve_Package)
+    if(Rx_crc == Result_crc):
+        return Recieve_Package
+    else:
+        Recieve_Package = []
     
 if __name__ == "__main__":
     while(1):
