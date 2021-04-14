@@ -62,12 +62,16 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define Proximity_J1_Pin GPIO_PIN_2
 #define Proximity_J1_GPIO_Port GPIOE
+#define Proximity_J1_EXTI_IRQn EXTI2_IRQn
 #define Proximity_J2_Pin GPIO_PIN_3
 #define Proximity_J2_GPIO_Port GPIOE
+#define Proximity_J2_EXTI_IRQn EXTI3_IRQn
 #define Proximity_J3_Pin GPIO_PIN_4
 #define Proximity_J3_GPIO_Port GPIOE
+#define Proximity_J3_EXTI_IRQn EXTI4_IRQn
 #define Proximity_J4_Pin GPIO_PIN_5
 #define Proximity_J4_GPIO_Port GPIOE
+#define Proximity_J4_EXTI_IRQn EXTI9_5_IRQn
 #define USER_Btn_Pin GPIO_PIN_13
 #define USER_Btn_GPIO_Port GPIOC
 #define PC_Rx_Pin GPIO_PIN_6

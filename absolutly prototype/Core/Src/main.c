@@ -60,10 +60,19 @@ UART_HandleTypeDef huart7;
 UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_uart7_rx;
 DMA_HandleTypeDef hdma_uart7_tx;
+
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /* USER CODE BEGIN PV */
-
+//Global Variable Here !!!
+uint16_t Home_Set[4] = {0};
+uint16_t Motor_Number[4] = {0};
+uint16_t Dir_Motor[4] = {0};
+uint16_t EncoderValue16[3]={0};  //J1 J3 J4
+uint32_t EncoderValue32 = 0; //J2
+uint32_t count=0;
+uint32_t count_error=0;
+uint16_t error_count_clk =0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -89,20 +98,15 @@ static void MX_TIM13_Init(void);
 /* USER CODE BEGIN PFP */
 
 //define Prototype Function Here !!!!!
-void sethome();
-void Start_debug(uint16_t Parameter);
-void Update_Period(uint16_t Motor_Number[],uint16_t Period);
+static void sethome();
+static void Start_debug(uint16_t Parameter);
+static void Update_Period(uint8_t Motor_Number[],double Freequency,float Duty_Cycle);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-//Global Variable Here !!!
-uint16_t Home_Set[4] = {0};
-uint16_t Motor_Number[4] = {0};
-uint16_t Dir_Motor[4] = {0};
-uint16_t EncoderValue16[3]={0};  //J1 J3 J4
-uint32_t EncoderValue32 = 0; //J2
+
 /* USER CODE END 0 */
 
 /**
@@ -112,7 +116,6 @@ uint32_t EncoderValue32 = 0; //J2
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -162,21 +165,17 @@ int main(void)
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
   HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
   HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);
-  //Initialize External Interrupt J1 J2 J3 J4
-  HAL_NVIC_EnableIRQ(EXTI12_IRQn);
-  HAL_NVIC_EnableIRQ(EXTI13_IRQn);
-  HAL_NVIC_EnableIRQ(EXTI14_IRQn);
-  HAL_NVIC_EnableIRQ(EXTI15_IRQn);
   //Initialize Timer For Control Loop
   HAL_TIM_Base_Start(&htim6);
-
-
+  count += 50;
+  count++;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  count = 3;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -184,10 +183,10 @@ int main(void)
 	//System state !!!!!
 
 	//encoder read
-	EncoderValue16[0] = TIM1->CNT;
-	EncoderValue32 = TIM2->CNT;
-	EncoderValue16[2] = TIM3->CNT;
-	EncoderValue16[3] = TIM4->CNT;
+//	EncoderValue16[0] = TIM1->CNT;
+//	EncoderValue32 = TIM2->CNT;
+//	EncoderValue16[2] = TIM3->CNT;
+//	EncoderValue16[3] = TIM4->CNT;
 
 
   }
@@ -202,31 +201,29 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
   /** Supply configuration update enable
   */
   HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
   /** Configure the main internal regulator output voltage
   */
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
 
   while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI48|RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_DIV8;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_DIV1;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 480;
+  RCC_OscInitStruct.PLL.PLLN = 60;
   RCC_OscInitStruct.PLL.PLLP = 2;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
+  RCC_OscInitStruct.PLL.PLLQ = 6;
   RCC_OscInitStruct.PLL.PLLR = 2;
-  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_1;
+  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
   RCC_OscInitStruct.PLL.PLLFRACN = 0;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -246,25 +243,11 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
   RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
   {
     Error_Handler();
   }
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USART3|RCC_PERIPHCLK_UART4
-                              |RCC_PERIPHCLK_UART7|RCC_PERIPHCLK_SPI1
-                              |RCC_PERIPHCLK_USB;
-  PeriphClkInitStruct.Spi123ClockSelection = RCC_SPI123CLKSOURCE_PLL;
-  PeriphClkInitStruct.Usart234578ClockSelection = RCC_USART234578CLKSOURCE_D2PCLK1;
-  PeriphClkInitStruct.UsbClockSelection = RCC_USBCLKSOURCE_HSI48;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Enable USB Voltage detector
-  */
-  HAL_PWREx_EnableUSBVoltageDetector();
 }
-
 /**
   * @brief SPI1 Initialization Function
   * @param None
@@ -334,10 +317,10 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 0;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 4096;
+  htim1.Init.Period = 8191;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   sConfig.EncoderMode = TIM_ENCODERMODE_TI1;
   sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
   sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
@@ -1101,6 +1084,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOF_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
@@ -1121,8 +1105,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : Proximity_J1_Pin Proximity_J2_Pin Proximity_J3_Pin Proximity_J4_Pin */
   GPIO_InitStruct.Pin = Proximity_J1_Pin|Proximity_J2_Pin|Proximity_J3_Pin|Proximity_J4_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : USER_Btn_Pin */
@@ -1167,9 +1151,23 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(Dynamixel_data_GPIO_Port, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
 }
 
 /* USER CODE BEGIN 4 */
+
 
 void Update_Period(uint8_t Motor_Number[],double Freequency,float Duty_Cycle){
 
@@ -1184,43 +1182,43 @@ void Update_Period(uint8_t Motor_Number[],double Freequency,float Duty_Cycle){
 	double Period = 1000000/Freequency;
 	uint32_t PWM = Period * Duty_Cycle / 100;
 
-	if(Motor_Joint[0] == 1){
+	if(Motor_Number[0] == 1){
 		TIM13->ARR = Period; //update period
 		TIM13->CCR1 = PWM;   //update duty cycle
 
 	}
-	else if(Motor_Joint[1] == 1){
+	else if(Motor_Number[1] == 1){
 		TIM14->ARR = Period;
 		TIM14->CCR1 = PWM;
 
 	}
-	else if(Motor_Joint[2] == 1){
+	else if(Motor_Number[2] == 1){
 		TIM16->ARR = Period;
-		TIM16.CCR1 = PWM;
+		TIM16->CCR1 = PWM;
 
 	}
-	else if(Motor_Joint[3] == 1){
+	else if(Motor_Number[3] == 1){
 		TIM17->ARR = Period;
 		TIM17->CCR1 = PWM;
 	}
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-	if(GPIO_Pin == GPIO_Pin_12){
+	if(GPIO_Pin == GPIO_PIN_12){
 		Home_Set[0] ^= 0;
 	}
-	else if(GPIO_Pin == GPIO_Pin_13){
-		Home_set[1] ^= 0;
+	else if(GPIO_Pin == GPIO_PIN_13){
+		Home_Set[1] ^= 0;
 	}
-	else if(GPIO_Pin == GPIO_Pin_14){
-		Home_set[2] ^= 0;
+	else if(GPIO_Pin == GPIO_PIN_14){
+		Home_Set[2] ^= 0;
 	}
-	else if(GPIO_Pin == GPIO_Pin_15){
-		Home_set[3] ^= 0;
+	else if(GPIO_Pin == GPIO_PIN_15){
+		Home_Set[3] ^= 0;
 	}
-	else{
-		Error_Flag = Error_Flag | 0x1;
-	}
+//	else{
+//		Error_Flag = Error_Flag | 0x1;
+//	}
 }
 /* USER CODE END 4 */
 
@@ -1235,6 +1233,7 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+	  count_error = 1;
   }
   /* USER CODE END Error_Handler_Debug */
 }
