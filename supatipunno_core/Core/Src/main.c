@@ -102,7 +102,7 @@ uint16_t Dir_Motor[4] = {0};
 uint16_t EncoderValue16[4]={0};  //J1 J2 J3 J4
 
 //debug
-uint8_t debug_count = 0;
+uint16_t debug_count = 0;
 uint16_t calculate_crc=0;
 uint16_t crc_pack[10];
 
@@ -1218,7 +1218,7 @@ uint16_t update_crc(uint16_t result, uint16_t *data_pack, uint16_t buff_size){
 	        0x8213, 0x0216, 0x021C, 0x8219, 0x0208, 0x820D, 0x8207, 0x0202
 	    };
 
-	    for(j = 0; j < buff_size; j++)
+	    for(j = 0; j < buff_size-1; j++)
 	    {
 	        i = ((uint16_t)(result >> 8) ^ data_pack[j]) & 0xFF;
 	        result = (result << 8) ^ crc_table[i];
@@ -1269,7 +1269,8 @@ uint8_t verify_package(){
 	for(int i = 3;i <=8 ;i++){
 		crc_pack[i] = process_package.parameter[i-3];
 	}
-	calculate_crc = update_crc(0,crc_pack,sizeof(crc_pack));
+	debug_count = sizeof(crc_pack)/2;
+	calculate_crc = update_crc(0,crc_pack,sizeof(crc_pack)/2);
 	if(process_package.crc == calculate_crc){
 	  return 1;
 	}
@@ -1314,9 +1315,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 	if(htim == &htim6){
 		//update variable for do control loop
 	}
-	else if(htim == &htim7){
-		//debug mode
-	}
+//	else if(htim == &htim7){
+//		//debug mode
+//	}
 }
 
 /* USER CODE END 4 */
