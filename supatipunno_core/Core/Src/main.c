@@ -36,6 +36,11 @@ typedef struct package{
 	uint16_t crc;
 }package_typedef;
 
+typedef struct error_package{
+	uint8_t error_type;
+	uint8_t error_info;
+}error_package_typedef;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -81,11 +86,14 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 //system & flag
 uint8_t state = 0;
 uint8_t input_package_flag = 0;
+
 //communication
-uint8_t input_package[20];
-uint8_t output_package[20];
 package_typedef process_package;
+error_package_typedef error_package;
+uint8_t input_package[17];
+uint8_t output_package[50];
 uint8_t package_count = 0;
+uint8_t result_verify_package;
 
 //movement
 uint16_t Home_Set[4] = {0};
@@ -96,6 +104,9 @@ uint16_t EncoderValue16[4]={0};  //J1 J2 J3 J4
 //debug
 uint8_t debug_count = 0;
 uint16_t calculate_crc=0;
+uint16_t crc_pack[10];
+
+//control
 
 /* USER CODE END PV */
 
@@ -123,6 +134,7 @@ static void sethome();
 static void Start_debug(uint16_t Parameter);
 static void Update_Period(uint8_t Motor_Number[],double Freequency,float Duty_Cycle);
 static uint16_t update_crc(uint16_t result, uint16_t *data_pack, uint16_t buff_size);
+static uint8_t verify_package();
 
 /* USER CODE END PFP */
 
@@ -188,6 +200,7 @@ int main(void)
   HAL_TIM_Encoder_Start(&htim8, TIM_CHANNEL_ALL);
   //start Timer For Control Loop
   HAL_TIM_Base_Start(&htim6);
+  //HAL_TIM_Base_Start(&htim7);
   //start DMA
   HAL_UART_Receive_DMA(&huart3, input_package, 17);
 
@@ -203,65 +216,43 @@ int main(void)
   {
 	  switch(state){
 	  	  case 0:
-	  		  package_count = 15;
 	  		  break;
 	  	  case 1:
-	  		  package_count = 10;
-			  //debug mode
-			  if(process_package.instruction == 0x02){
-				  process_package.parameter[0] = input_package[3];
-				  process_package.crc = input_package[15] << 8 | input_package[16];
-			  }
-			  //set home
-			  else if(process_package.instruction == 0x03){
-				  process_package.crc = input_package[15] << 8 | input_package[16];
-			  }
-			  //jog joint
-			  else if(process_package.instruction == 0x04){
-				  process_package.parameter[0] = input_package[3];
-				  process_package.parameter[1] = input_package[4] << 8 | input_package[5];
-				  process_package.crc = input_package[15] << 8 | input_package[16];
-			  }
-			  //Cartesian jog, Move
-			  else if(process_package.instruction == 0x05 || process_package.instruction == 0x06){
-				  uint8_t index =1;
-				  process_package.parameter[0] = input_package[3];
-				  for(int i = 4;i <=10 ;i+=2){
-					  process_package.parameter[index] = input_package[i] << 8 | input_package[i+1];
-					  index++;
-				  }
-				  process_package.crc = input_package[15] << 8 | input_package[16];
-			  }
-			  //Trajectory move
-			  else if(process_package.instruction == 0x07){
-				  uint8_t index =0;
-				  for(int i = 3;i <=13 ;i+=2){
-					  process_package.parameter[index] = input_package[i] << 8 | input_package[i+1];
-					  index++;
-				  }
-				  process_package.crc = input_package[15] << 8 | input_package[16];
-			  }
-			  //crc check
-			  calculate_crc = update_crc(0,process_package.parameter,sizeof(process_package.parameter));
-			  if(process_package.crc == calculate_crc){
+			  result_verify_package = verify_package();
+			  if(result_verify_package == 1){
 				  state = process_package.instruction;
-				  sprintf(output_package, "fuckkk");
-				  HAL_UART_Transmit(&huart3, output_package, strlen(output_package),100);
 			  }
 			  else{
-				  debug_count = 10;
-				  sprintf(output_package, "hello");
+				  //send error package
+				  sprintf(output_package, "Package error type : %d info : %d", error_package.error_type,error_package.error_info);
 				  HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
 				  state = 0;
 			  }
 			  break;
-	  	  default:
-			  {
-				  package_count = 3;
-				  //sprintf(input_package,'Hello dude');
-				  //HAL_UART_Transmit_DMA(&huart7, input_package, sizeof(input_package));
-				  break;
-			  }
+	  	  case 2:
+	  		  package_count = 2;
+	  		  state = 0;
+	  		  break;
+	  	  case 3:
+	  		package_count = 3;
+	  		  state = 0;
+	  		break;
+	  	  case 4:
+	  		package_count = 4;
+	  		  state = 0;
+	  		break;
+	  	  case 5:
+	  		package_count = 5;
+	  		  state = 0;
+	  		break;
+	  	  case 6:
+	  		package_count = 6;
+	  		  state = 0;
+	  		break;
+	  	  case 7:
+	  		package_count = 7;
+	  		  state = 0;
+	  		break;
 	  }
 
 
@@ -1192,7 +1183,7 @@ void Update_Period(uint8_t Motor_Number[],double Freequency,float Duty_Cycle){
 }
 uint16_t update_crc(uint16_t result, uint16_t *data_pack, uint16_t buff_size){
 	uint16_t i, j;
-	    uint16_t crc_table[256] = {
+	uint16_t crc_table[256] = {
 	        0x0000, 0x8005, 0x800F, 0x000A, 0x801B, 0x001E, 0x0014, 0x8011,
 	        0x8033, 0x0036, 0x003C, 0x8039, 0x0028, 0x802D, 0x8027, 0x0022,
 	        0x8063, 0x0066, 0x006C, 0x8069, 0x0078, 0x807D, 0x8077, 0x0072,
@@ -1235,6 +1226,59 @@ uint16_t update_crc(uint16_t result, uint16_t *data_pack, uint16_t buff_size){
 
 	    return result;
 }
+uint8_t verify_package(){
+	memset(process_package.parameter,0,sizeof(process_package.parameter));
+	//debug mode
+	if(process_package.instruction == 0x02){
+		process_package.parameter[0] = input_package[3];
+		process_package.crc = input_package[15] << 8 | input_package[16];
+	}
+	//set home
+	else if(process_package.instruction == 0x03){
+		process_package.crc = input_package[15] << 8 | input_package[16];
+	}
+	//jog joint
+	else if(process_package.instruction == 0x04){
+		process_package.parameter[0] = input_package[3];
+		process_package.parameter[1] = input_package[4] << 8 | input_package[5];
+		process_package.crc = input_package[15] << 8 | input_package[16];
+	}
+	//Cartesian jog, Move
+	else if(process_package.instruction == 0x05 || process_package.instruction == 0x06){
+		uint8_t index =1;
+		process_package.parameter[0] = input_package[3];
+		for(int i = 4;i <=10 ;i+=2){
+			process_package.parameter[index] = input_package[i] << 8 | input_package[i+1];
+			index++;
+		}
+		process_package.crc = input_package[15] << 8 | input_package[16];
+	}
+	//Trajectory move
+	else if(process_package.instruction == 0x07){
+		uint8_t index =0;
+		for(int i = 3;i <=13 ;i+=2){
+			process_package.parameter[index] = input_package[i] << 8 | input_package[i+1];
+			index++;
+		}
+		process_package.crc = input_package[15] << 8 | input_package[16];
+	}
+	//crc check
+	crc_pack[0] = process_package.head;
+	crc_pack[1] = process_package.length;
+	crc_pack[2] = process_package.instruction;
+	for(int i = 3;i <=8 ;i++){
+		crc_pack[i] = process_package.parameter[i-3];
+	}
+	calculate_crc = update_crc(0,crc_pack,sizeof(crc_pack));
+	if(process_package.crc == calculate_crc){
+	  return 1;
+	}
+	else{
+		error_package.error_type = 0xe1;
+		error_package.error_info = 0x01;
+		return 0;
+	}
+}
 
 //callback function
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
@@ -1265,7 +1309,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 	}
 }
 
-
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
+{
+	if(htim == &htim6){
+		//update variable for do control loop
+	}
+	else if(htim == &htim7){
+		//debug mode
+	}
+}
 
 /* USER CODE END 4 */
 
