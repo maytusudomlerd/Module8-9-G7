@@ -202,6 +202,7 @@ int main(void)
   //HAL_TIM_Base_Start(&htim7);
   //start DMA
   HAL_UART_Receive_DMA(&huart3, input_package, 17);
+  HAL_UART_Receive_DMA(&huart7, input_package, 17);
 
 
 
@@ -1306,6 +1307,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 			state = 1;
 		}
 
+	}
+	else if(huart == &huart7){
+		if(state == 0){
+			process_package.head = input_package[0];
+			process_package.length = input_package[1];
+			process_package.instruction = input_package[2];
+			state = 1;
+		}
+
+	}
+	else{
+		debug_count = 10;
 	}
 }
 
