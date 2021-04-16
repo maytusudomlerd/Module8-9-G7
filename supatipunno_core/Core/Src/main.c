@@ -19,7 +19,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "string.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -1229,12 +1228,12 @@ uint16_t update_crc(uint16_t result, uint16_t *data_pack, uint16_t buff_size){
 uint8_t verify_package(){
 	memset(process_package.parameter,0,sizeof(process_package.parameter));
 	//debug mode
-	if(process_package.instruction == 0x02){
+	if(process_package.instruction == 0x03){
 		process_package.parameter[0] = input_package[3];
 		process_package.crc = input_package[15] << 8 | input_package[16];
 	}
 	//set home
-	else if(process_package.instruction == 0x03){
+	else if(process_package.instruction == 0x02){
 		process_package.crc = input_package[15] << 8 | input_package[16];
 	}
 	//jog joint

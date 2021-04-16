@@ -6,7 +6,7 @@ def Get_Tx_Package(Instruction=[], Parameter=[]):
     Instruction = Instruction[0]
     Parameter = Parameter
     Lenght = 0
-    Tx_Package = [Header[0], Lenght, Instruction[0]]
+    Tx_Package = []
 
     for i in range(0, len(Parameter)):
         try:
@@ -15,32 +15,57 @@ def Get_Tx_Package(Instruction=[], Parameter=[]):
 
         except:
             Tx_Package.append(np.uint16(Parameter[i]))
-
-    while(len(Tx_Package) != 9):
-        Tx_Package.append(np.uint16(0))
+            
     # Convert To Byte
-    Byte_Tx_Package = Convert_Data_To_Byte(Tx_Package)
-    Byte_Tx_Package[1] = 16
-    Tx_Package[1] = 16
+    if(Instruction[0] in [2,3,7]):
+        Flag = 0
+        Byte_Tx_Package = Convert_Data_To_Byte(Tx_Package,Flag = Flag)
+    else:
+        Flag = 1
+        Byte_Tx_Package = Convert_Data_To_Byte(Tx_Package,Flag = Flag)
+
+    Byte_Tx_Package.insert(0,Header[0])
+    Byte_Tx_Package.insert(1,16)
+    Byte_Tx_Package.insert(2,Instruction[0])
+    Tx_Package.insert(0,Header[0])
+    Tx_Package.insert(1,16)
+    Tx_Package.insert(2,Instruction[0])
     # CRC Calcualte
     crc = Update_CRC(Target_Data = Tx_Package)
     crc_H = crc // 256
     crc_L = crc % 256
-    Byte_Tx_Package[-1] = crc_H
-    Byte_Tx_Package[-2] = crc_L
+    Byte_Tx_Package[-2] = crc_H
+    Byte_Tx_Package[-1] = crc_L
 
     return Byte_Tx_Package
 
 # Convert to Byte
-def Convert_Data_To_Byte(Package = []):
+def Convert_Data_To_Byte(Package = [],Flag = 0):
     Byte_Package = []
-    for i in Package:
-        if(i%256 == i or i == 0):
-            Byte_Package.append(i)
-        else:
-            Byte_Package.append(i//256)
-            Byte_Package.append(i%256)
-    while(len(Byte_Package) != 16):
+    print(Package)
+    if(Flag == 1):
+        Byte_Package.append(Package[0])
+        for i in range(1,len(Package)):
+            print(Package[i])
+            if(Package[i]%256 == Package[i] or Package[i] == 0):
+                Byte_Package.append(0)
+                Byte_Package.append(Package[i])
+                print('debug 1')
+            else:
+                Byte_Package.append(Package[i]//256)
+                Byte_Package.append(Package[i]%256)
+                print('debug 2')
+
+    else:
+        for i in Package:
+            if(i%256 == i or i == 0):
+                Byte_Package.append(0)
+                Byte_Package.append(i)
+            else:
+                Byte_Package.append(i//256)
+                Byte_Package.append(i%256)
+
+    while(len(Byte_Package) != 14):
         Byte_Package.append(0)
 
     return Byte_Package
@@ -86,8 +111,8 @@ def Update_CRC(Result = 0,Target_Data = 0):
         Result = np.uint16(Result << 8 ) ^ crc_table[i]
     return Result
 
-inst = [2]
-param = [0xFF]
+inst = [6]
+param = [0x0F,300,270,123,10]
 print(Get_Tx_Package([inst],[param]))
 # data = [np.uint16(0x00FF),np.uint16(0x0016), np.uint16(0x0002) ,np.uint16(0x00FF),np.uint16(0x0000) ,np.uint16(0x0000) ,np.uint16(0x0000) ,np.uint16(0x0000) ,np.uint16(0x0000)] 
 # print(hex(Update_CRC(0,data)))

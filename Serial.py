@@ -1,20 +1,17 @@
 import serial
 import numpy as np
 
-try:
 # INIT UART PORT    
-    Grinex = serial.Serial(port='COM5', timeout=None, baudrate=2000000,
-                        xonxoff=0, rtscts=0, bytesize=8, parity='N', stopbits=1)
-except:
-    pass
-
+Supatipunno = serial.Serial(port= 'COM6',timeout = 3, baudrate=576000,
+                  xonxoff=0, rtscts=0,bytesize=8, parity='N', stopbits=1)
 # CHECK UART PORT IS OPEN
 try:
-    Grinex.is_open
-    print('\nCOMMUNICATION WITH PORT NAME : ' + Grinex.portstr)
-    print('UART PORT IS OPEN. READY TO COMMUNICATION \n\n')
+    Supatipunno.is_open
+    print('\nCOMMUNICATION WITH PORT NAME : ' + Supatipunno.portstr)
+    print('UART PORT IS OPEN. READY TO COMMUNICATION \n')
+    
 except:
-    print('UART PORT IS CLOSE. PLEASE TRY AGAIN LATER \n\n')
+    print('UART PORT IS CLOSE. PLEASE TRY AGAIN LATER \n')
 
 # GLOBAL VARIBLES
 Ping_Flag = 0
@@ -28,7 +25,6 @@ Traj_coef = [0,0,0,0,0,0]  #c0,c1,c2,c3,c4,c5
 def Get_Data_From_User():
     global Ping_Flag
     global Position_Robot_Task
-    Traj_flag = 0
     Instruction = []
     Parameter = []
 
@@ -43,7 +39,7 @@ def Get_Data_From_User():
     elif(User_Command == str(2)):
         Instruction.append(2)
         print(Get_Tx_Package([Instruction]))
-        #Grinex.write(serial.to_byte(Get_Tx_Package([Instruction])))
+        Supatipunno.write(serial.to_bytes(Get_Tx_Package(Instruction=[Instruction])))
     # Ping Mode
     elif(User_Command == str(3)):
         Instruction.append(3)
@@ -275,33 +271,34 @@ def JogCartesian():
             Jog_state = 0
 # Move
 def Move():
-
+    global Position_Robot_Task
+    global Position_Robot_Joint
     global abs_Position_Robot_Joint
     global abs_Position_Robot_Task
     Instruction = [6]
     Type_flag = 0
     Type_list = ['Configuration Variables','Taskspace Variables']
     Type_of_Input = 0
-    Move_state = 0
+    Move_state = str(0)
     Moving = 0
-    joint_signed = 0
+    Joint_signed = 0
     Task_signed = 0
-    Parameter = []
 
     while(Move_state != str(99)):
-        print('Move Menu\nPlease select Input Before Start Move (Defult : Joint space) ')
-        print('Your Select Input : ' + Type_list[Type_flag])
-        Move_state = input('Select type Mewnu \n\t1. Select Input Type\n\t2. Start Move\n\t99. Back to Main menu\nInput Your Command : ')
+        if(Move_state == str(0)):
+            print('Move Menu\nPlease select Input Before Start Move (Defult : Joint space) ')
+            print('Your Select Input : ' + Type_list[Type_flag])
+            Move_state = input('Select type Mewnu \n\t1. Select Input Type\n\t2. Start Move\n\t99. Back to Main menu\nInput Your Command : ')
         if(Move_state == str(1)):
             Type_of_Input = input('Input your Type of Input \n\t1. Jointspace Variables \n\t2. Taskspace Variables \n\t99. Back\nInput your Type of Input : ')
             if(Type_of_Input == str(1)):
                 Type_flag = 0
-                Move_state = 2
+                Move_state = str(2)
             elif(Type_of_Input == str(2)):
                 Type_flag = 1
-                Move_state = 2
+                Move_state = str(2)
             elif(Type_of_Input == str(99)):
-                Move_state = 0
+                Move_state = str(0)
             else:
                 print('Invaid command please Input in range 1 or 2 \n')
         elif(Move_state == str(2)):
@@ -311,17 +308,17 @@ def Move():
                     try:
                         for i in range(0, 4):
                             Joint_Config_Input = input('Joint (q) '+str(i+1) + ': ')
-                            Parameter.append(int(Joint_Config_Input))
+                            Position_Robot_Joint[i] = int(Joint_Config_Input)
                         for i in range(0,4):
                             if(Position_Robot_Joint[i] >= 0):
                                 Joint_signed = (1 << (3-i)) | Joint_signed
                                 #print('i = '+str(i) + '  ' + str(Task_signed))
                             else:
-                                joint_signed = (15-(1 << (3-i))) & Joint_signed
+                                Joint_signed = (15-(1 << (3-i))) & Joint_signed
                                 #print('i = '+str(i) + '  ' + str(Task_signed))
                                 #print('Task sign = '+ str(Task_signed) )
-                        abs_Position_Robot_Joint = [abs(int(Parameter[0])), abs(int(Parameter[1])), abs(int(Parameter[2])), abs(int(Parameter[3]))]
-                        print(Get_Tx_Package([Instruction], [joint_signed,abs_Position_Robot_Joint]))
+                        abs_Position_Robot_Joint = [abs(int(Position_Robot_Joint[0])), abs(int(Position_Robot_Joint[1])), abs(int(Position_Robot_Joint[2])), abs(int(Position_Robot_Joint[3]))]
+                        print(Get_Tx_Package([Instruction], [Joint_signed,abs_Position_Robot_Joint]))
                         #Grinex.write(serial.to_byte(Get_Tx_Package([Instruction], [joint_signed,Parameter])))
                     except:
                         print('Invalid Parameter\n')
@@ -330,18 +327,20 @@ def Move():
                     print('\nInput your Taskspace Variable \n Note : End - Effector Position (X,Y,Z,Rotz)')
                     Task_variable = ['X', 'Y', 'Z', 'RotZ']
                     try:
+                        index = 0;
                         for i in Task_variable:
                             Task__Input = input('Position in ' + i + ' : ')
-                            Parameter.append(int(Task__Input))
+                            Position_Robot_Task[index] = int(Task__Input)
+                            index= index+1
                         for i in range(0,4):
-                            if(Position_Robot_Joint[i] >= 0):
+                            if(Position_Robot_Task[i] >= 0):
                                 Task_signed = (1 << (3-i)) | Task_signed
                                 #print('i = '+str(i) + '  ' + str(Task_signed))
                             else:
                                 Task_signed = (15-(1 << (3-i))) & Task_signed
                                 #print('i = '+str(i) + '  ' + str(Task_signed))
                                 #print('Task sign = '+ str(Task_signed) )
-                        abs_Position_Robot_Task = [abs(int(Parameter[0])), abs(int(Parameter[1])), abs(int(Parameter[2])), abs(int(Parameter[3]))]
+                        abs_Position_Robot_Task = [abs(int(Position_Robot_Task[0])), abs(int(Position_Robot_Task[1])), abs(int(Position_Robot_Task[2])), abs(int(Position_Robot_Task[3]))]
                         print(Get_Tx_Package([Instruction], [Task_signed,abs_Position_Robot_Task]))
                         #.write(serial.to_byte(Get_Tx_Package([Instruction], [Task_signed,Parameter])))
                     except:
@@ -351,13 +350,14 @@ def Move():
                 if(Moving.lower() == 'y'):
                     pass
                 else:
-                    Move_state = 0
+                    Move_state = str(0)
                     Moving = 99
                     break;
         elif(Move_state == str(99)):
            break
         else:
             print('Invaid command please Input in range 1 or 2 \n')
+            Move_state = str(0)
             
 # GET PACKAGE FROM INPUT DATA FUNCTION
 ##########################################################################################################################################
@@ -371,8 +371,7 @@ def Get_Tx_Package(Instruction=[], Parameter=[]):
     Header = [0xFF]
     Instruction = Instruction[0]
     Parameter = Parameter
-    Lenght = 0
-    Tx_Package = [Header[0], Lenght, Instruction[0]]
+    Tx_Package = []
 
     for i in range(0, len(Parameter)):
         try:
@@ -381,13 +380,21 @@ def Get_Tx_Package(Instruction=[], Parameter=[]):
 
         except:
             Tx_Package.append(np.uint16(Parameter[i]))
-
-    while(len(Tx_Package) != 9):
-        Tx_Package.append(np.uint16(0))
+            
     # Convert To Byte
-    Byte_Tx_Package = Convert_Data_To_Byte(Tx_Package)
-    Byte_Tx_Package[1] = 16
-    Tx_Package[1] = 16
+    if(Instruction[0] in [2,3,7]):
+        Flag = 0
+        Byte_Tx_Package = Convert_Data_To_Byte(Tx_Package,Flag = Flag)
+    else:
+        Flag = 1
+        Byte_Tx_Package = Convert_Data_To_Byte(Tx_Package,Flag = Flag)
+
+    Byte_Tx_Package.insert(0,Header[0])
+    Byte_Tx_Package.insert(1,16)
+    Byte_Tx_Package.insert(2,Instruction[0])
+    Tx_Package.insert(0,Header[0])
+    Tx_Package.insert(1,16)
+    Tx_Package.insert(2,Instruction[0])
     # CRC Calcualte
     crc = Update_CRC(Target_Data = Tx_Package)
     crc_H = crc // 256
@@ -398,15 +405,27 @@ def Get_Tx_Package(Instruction=[], Parameter=[]):
     return Byte_Tx_Package
 
 # Convert to Byte
-def Convert_Data_To_Byte(Package = []):
+def Convert_Data_To_Byte(Package = [],Flag = 0):
     Byte_Package = []
-    for i in Package:
-        if(i%256 == i or i == 0):
-            Byte_Package.append(i)
-        else:
-            Byte_Package.append(i//256)
-            Byte_Package.append(i%256)
-    while(len(Byte_Package) != 16):
+    if(Flag == 1):
+        Byte_Package.append(Package[0])
+        for i in range(1,len(Package)):
+            if(Package[i]%256 == Package[i] or Package[i] == 0):
+                Byte_Package.append(0)
+                Byte_Package.append(Package[i])
+            else:
+                Byte_Package.append(Package[i]//256)
+                Byte_Package.append(Package[i]%256)
+    else:
+        for i in Package:
+            if(i%256 == i or i == 0):
+                Byte_Package.append(0)
+                Byte_Package.append(i)
+            else:
+                Byte_Package.append(i//256)
+                Byte_Package.append(i%256)
+
+    while(len(Byte_Package) != 14):
         Byte_Package.append(0)
 
     return Byte_Package
