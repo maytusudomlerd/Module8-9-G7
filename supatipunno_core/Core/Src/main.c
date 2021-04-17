@@ -273,7 +273,6 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
   /** Supply configuration update enable
   */
@@ -320,19 +319,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USART3|RCC_PERIPHCLK_UART4
-                              |RCC_PERIPHCLK_UART7|RCC_PERIPHCLK_SPI1
-                              |RCC_PERIPHCLK_USB;
-  PeriphClkInitStruct.Spi123ClockSelection = RCC_SPI123CLKSOURCE_PLL;
-  PeriphClkInitStruct.Usart234578ClockSelection = RCC_USART234578CLKSOURCE_D2PCLK1;
-  PeriphClkInitStruct.UsbClockSelection = RCC_USBCLKSOURCE_PLL;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Enable USB Voltage detector
-  */
-  HAL_PWREx_EnableUSBVoltageDetector();
 }
 
 /**
@@ -552,7 +538,7 @@ static void MX_TIM6_Init(void)
   htim6.Instance = TIM6;
   htim6.Init.Prescaler = 119;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 65535;
+  htim6.Init.Period = 1000;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
@@ -1326,6 +1312,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
 	if(htim == &htim6){
 		//update variable for do control loop
+		state = 6;
 	}
 //	else if(htim == &htim7){
 //		//debug mode
