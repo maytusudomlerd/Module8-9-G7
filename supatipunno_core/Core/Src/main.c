@@ -70,12 +70,12 @@ TIM_HandleTypeDef htim16;
 TIM_HandleTypeDef htim17;
 
 UART_HandleTypeDef huart4;
-UART_HandleTypeDef huart7;
+UART_HandleTypeDef huart5;
 UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_uart4_rx;
 DMA_HandleTypeDef hdma_uart4_tx;
-DMA_HandleTypeDef hdma_uart7_rx;
-DMA_HandleTypeDef hdma_uart7_tx;
+DMA_HandleTypeDef hdma_uart5_rx;
+DMA_HandleTypeDef hdma_uart5_tx;
 DMA_HandleTypeDef hdma_usart3_rx;
 DMA_HandleTypeDef hdma_usart3_tx;
 
@@ -125,8 +125,8 @@ static void MX_TIM14_Init(void);
 static void MX_TIM16_Init(void);
 static void MX_TIM17_Init(void);
 static void MX_UART4_Init(void);
-static void MX_UART7_Init(void);
 static void MX_TIM6_Init(void);
+static void MX_UART5_Init(void);
 /* USER CODE BEGIN PFP */
 
 static void sethome();
@@ -183,8 +183,8 @@ int main(void)
   MX_TIM16_Init();
   MX_TIM17_Init();
   MX_UART4_Init();
-  MX_UART7_Init();
   MX_TIM6_Init();
+  MX_UART5_Init();
   /* USER CODE BEGIN 2 */
 
   //start PWM for motor J1 J2 J3 J4
@@ -202,7 +202,7 @@ int main(void)
   //HAL_TIM_Base_Start(&htim7);
   //start DMA
   HAL_UART_Receive_DMA(&huart3, input_package, 17);
-  HAL_UART_Receive_DMA(&huart7, input_package, 17);
+  HAL_UART_Receive_DMA(&huart5, input_package, 17);
 
 
 
@@ -231,27 +231,27 @@ int main(void)
 			  break;
 	  	  case 2:
 	  		  package_count = 2;
-	  		  state = 0;
+	  		  //state = 0;
 	  		  break;
 	  	  case 3:
 	  		package_count = 3;
-	  		  state = 0;
+	  		  //state = 0;
 	  		break;
 	  	  case 4:
 	  		package_count = 4;
-	  		  state = 0;
+	  		  //state = 0;
 	  		break;
 	  	  case 5:
 	  		package_count = 5;
-	  		  state = 0;
+	  		  //state = 0;
 	  		break;
 	  	  case 6:
 	  		package_count = 6;
-	  		  state = 0;
+	  		  //state = 0;
 	  		break;
 	  	  case 7:
 	  		package_count = 7;
-	  		  state = 0;
+	  		  //state = 0;
 	  		break;
 	  }
 
@@ -874,50 +874,50 @@ static void MX_UART4_Init(void)
 }
 
 /**
-  * @brief UART7 Initialization Function
+  * @brief UART5 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_UART7_Init(void)
+static void MX_UART5_Init(void)
 {
 
-  /* USER CODE BEGIN UART7_Init 0 */
+  /* USER CODE BEGIN UART5_Init 0 */
 
-  /* USER CODE END UART7_Init 0 */
+  /* USER CODE END UART5_Init 0 */
 
-  /* USER CODE BEGIN UART7_Init 1 */
+  /* USER CODE BEGIN UART5_Init 1 */
 
-  /* USER CODE END UART7_Init 1 */
-  huart7.Instance = UART7;
-  huart7.Init.BaudRate = 57600;
-  huart7.Init.WordLength = UART_WORDLENGTH_8B;
-  huart7.Init.StopBits = UART_STOPBITS_1;
-  huart7.Init.Parity = UART_PARITY_NONE;
-  huart7.Init.Mode = UART_MODE_TX_RX;
-  huart7.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart7.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart7.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart7.Init.ClockPrescaler = UART_PRESCALER_DIV1;
-  huart7.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart7) != HAL_OK)
+  /* USER CODE END UART5_Init 1 */
+  huart5.Instance = UART5;
+  huart5.Init.BaudRate = 256000;
+  huart5.Init.WordLength = UART_WORDLENGTH_8B;
+  huart5.Init.StopBits = UART_STOPBITS_1;
+  huart5.Init.Parity = UART_PARITY_NONE;
+  huart5.Init.Mode = UART_MODE_TX_RX;
+  huart5.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart5.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart5.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart5.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart5.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart5) != HAL_OK)
   {
     Error_Handler();
   }
-  if (HAL_UARTEx_SetTxFifoThreshold(&huart7, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart5, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
   {
     Error_Handler();
   }
-  if (HAL_UARTEx_SetRxFifoThreshold(&huart7, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart5, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
   {
     Error_Handler();
   }
-  if (HAL_UARTEx_DisableFifoMode(&huart7) != HAL_OK)
+  if (HAL_UARTEx_DisableFifoMode(&huart5) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN UART7_Init 2 */
+  /* USER CODE BEGIN UART5_Init 2 */
 
-  /* USER CODE END UART7_Init 2 */
+  /* USER CODE END UART5_Init 2 */
 
 }
 
@@ -937,7 +937,7 @@ static void MX_USART3_UART_Init(void)
 
   /* USER CODE END USART3_Init 1 */
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 57600;
+  huart3.Init.BaudRate = 256000;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;
@@ -1115,6 +1115,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB3 PB4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF11_UART7;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
@@ -1294,7 +1302,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 		}
 
 	}
-	else if(huart == &huart7){
+	else if(huart == &huart5){
 		if(state == 0){
 			process_package.head = input_package[0];
 			process_package.length = input_package[1];
