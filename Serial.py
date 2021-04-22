@@ -2,7 +2,7 @@ import serial
 import numpy as np
 
 # INIT UART PORT    
-Supatipunno = serial.Serial(port= 'COM9',timeout = 3, baudrate=256000,
+Supatipunno = serial.Serial(port= 'COM7',timeout = 3, baudrate=256000,
                   xonxoff=0, rtscts=0,bytesize=8, parity='N', stopbits=1)
 # CHECK UART PORT IS OPEN
 try:
@@ -509,6 +509,7 @@ if __name__ == "__main__":
     while(1):
         try:
             Get_Data_From_User()
+            
         except:
             print('Get Package fail \n\n')
             break

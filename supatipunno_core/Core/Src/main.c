@@ -63,6 +63,7 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim6;
+TIM_HandleTypeDef htim7;
 TIM_HandleTypeDef htim8;
 TIM_HandleTypeDef htim13;
 TIM_HandleTypeDef htim14;
@@ -85,6 +86,7 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 //system & flag
 uint8_t state = 0;
 uint8_t input_package_flag = 0;
+uint8_t command_finish = 0;
 
 //communication
 package_typedef process_package;
@@ -127,6 +129,7 @@ static void MX_TIM17_Init(void);
 static void MX_UART4_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_UART5_Init(void);
+static void MX_TIM7_Init(void);
 /* USER CODE BEGIN PFP */
 
 static void sethome();
@@ -134,6 +137,7 @@ static void Start_debug(uint16_t Parameter);
 static void Update_Period(uint8_t Motor_Number[],double Freequency,float Duty_Cycle);
 static uint16_t update_crc(uint16_t result, uint16_t *data_pack, uint16_t buff_size);
 static uint8_t verify_package();
+static void send_back(uint8_t header,uint8_t inst,uint16_t Param);
 
 /* USER CODE END PFP */
 
@@ -185,6 +189,7 @@ int main(void)
   MX_UART4_Init();
   MX_TIM6_Init();
   MX_UART5_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
   //start PWM for motor J1 J2 J3 J4
@@ -216,7 +221,9 @@ int main(void)
   {
 	  switch(state){
 	  	  case 0:
-	  		  break;
+	  		  sprintf(output_package, "Idle State Give Me Your Command.");
+	  		  HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
+	  		 	 break;
 	  	  case 1:
 			  result_verify_package = verify_package();
 			  if(result_verify_package == 1){
@@ -230,16 +237,30 @@ int main(void)
 			  }
 			  break;
 	  	  case 2:
+	  		  sprintf(output_package, "Loading to Home Position.....");
+	  		  HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
+	  		  //set_home();
+	  		  command_finish = 1;
 	  		  package_count = 2;
-	  		  //state = 0;
+	  		  if(command_finish)state = 0;
 	  		  break;
 	  	  case 3:
-	  		package_count = 3;
-	  		  //state = 0;
+	  		sprintf(output_package, "Ping Mode %d",Ping_state);
+	  		HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
+	  		if( (process_package.parameter[0] & 0x8)>>8 == 1){
+	  			HAL_TIM_Base_Start(&htim7);
+	  			//manage data that push to high level
+	  			command_finish = 1;
+	  		}
+	  		else{
+	  			HAL_TIM_Base_Stop(&htim7);
+	  			command_finish = 1;
+	  		}
+	  		if(command_finish)state = 0;
 	  		break;
 	  	  case 4:
 	  		package_count = 4;
-	  		  //state = 0;
+	  		//if(command_finish)state = 0;
 	  		break;
 	  	  case 5:
 	  		package_count = 5;
@@ -285,9 +306,10 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI48|RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_DIV1;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 4;
@@ -553,6 +575,44 @@ static void MX_TIM6_Init(void)
   /* USER CODE BEGIN TIM6_Init 2 */
 
   /* USER CODE END TIM6_Init 2 */
+
+}
+
+/**
+  * @brief TIM7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM7_Init(void)
+{
+
+  /* USER CODE BEGIN TIM7_Init 0 */
+
+  /* USER CODE END TIM7_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM7_Init 1 */
+
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = 119;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 1000;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM7_Init 2 */
+
+  /* USER CODE END TIM7_Init 2 */
 
 }
 
@@ -1275,6 +1335,17 @@ uint8_t verify_package(){
 	}
 }
 
+void send_back(uint8_t header,uint8_t inst,uint16_t Param[]){
+	memset(output_package,0,sizeof(output_package));
+	output_package[0] = header;
+	output_package[1] = sizeof(Param)+4;
+	output_package[2] = inst;
+	for(int i = 0;i< sizeof(Param);i++){
+		output_package[i+3] = Param[i];
+	}
+
+
+}
 //callback function
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin == GPIO_PIN_2){
