@@ -19,7 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
+#include "string.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -40,6 +40,13 @@ typedef struct error_package{
 	uint8_t error_info;
 }error_package_typedef;
 
+typedef struct via_point{
+	uint16_t j1;
+	uint16_t j2;
+	uint16_t j3;
+	uint16_t j4;
+	uint16_t Chessboard;
+}via_point_typedef;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -87,7 +94,11 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 uint8_t state = 0;
 uint8_t input_package_flag = 0;
 uint8_t command_finish = 0;
-
+via_point_typedef via_point;
+double traj_T = 10;
+double traj_t = 0.001;
+uint8_t num_joint = 8;
+uint8_t require_data = 0xFF;
 //communication
 package_typedef process_package;
 error_package_typedef error_package;
@@ -137,7 +148,9 @@ static void Start_debug(uint16_t Parameter);
 static void Update_Period(uint8_t Motor_Number[],double Freequency,float Duty_Cycle);
 static uint16_t update_crc(uint16_t result, uint16_t *data_pack, uint16_t buff_size);
 static uint8_t verify_package();
-static void send_back(uint8_t header,uint8_t inst,uint16_t Param);
+static void send_ack(uint8_t inst);
+static void send_feedback(uint8_t inst);
+static void send_error();
 
 /* USER CODE END PFP */
 
@@ -158,8 +171,7 @@ int main(void)
 
   /* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -211,15 +223,20 @@ int main(void)
 
 
 
-
-
+  via_point.Chessboard = 1234;
+  via_point.j1 = 123;
+  via_point.j2 = 123;
+  via_point.j3 = 123;
+  via_point.j4 = 123;
+  send_feedback(6);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  switch(state){
+	  /*
+	   * switch(state){
 	  	  case 0:
 	  		  sprintf(output_package, "Idle State Give Me Your Command.");
 	  		  HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
@@ -275,6 +292,7 @@ int main(void)
 	  		  //state = 0;
 	  		break;
 	  }
+	  */
 
 
 
@@ -1329,23 +1347,170 @@ uint8_t verify_package(){
 	  return 1;
 	}
 	else{
-		error_package.error_type = 0xe1;
+		error_package.error_type = 0x01;
 		error_package.error_info = 0x01;
 		return 0;
 	}
 }
 
-void send_back(uint8_t header,uint8_t inst,uint16_t Param[]){
+void send_ack(uint8_t inst){
+	memset(crc_pack,0,sizeof(crc_pack));
 	memset(output_package,0,sizeof(output_package));
-	output_package[0] = header;
-	output_package[1] = sizeof(Param)+4;
-	output_package[2] = inst;
-	for(int i = 0;i< sizeof(Param);i++){
-		output_package[i+3] = Param[i];
+	output_package[0] = 0xFF;
+	output_package[1] = 4;
+	output_package[2] = (0x0A << 4) | inst;
+	debug_count = strlen(output_package);
+	for(int  i = 0;i <= strlen(output_package);i++){
+			crc_pack[i] = output_package[i];
 	}
-
-
+	calculate_crc = update_crc(0,crc_pack,sizeof(crc_pack)/2);
+	output_package[3] = calculate_crc / 256;
+	output_package[4] = calculate_crc % 256;
+	HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
 }
+void send_feedback(uint8_t inst){
+	uint8_t count = 4;
+	output_package[0] = 0xFF;
+	output_package[2] = inst;
+	crc_pack[0] = 0xFF;
+	crc_pack[2] = inst;
+	if(inst == 1 ){
+		if((require_data & 16) == 16){
+			//debug_count+=16;
+			output_package[3] = via_point.Chessboard / 256;
+			output_package[4] = via_point.Chessboard % 256;
+			crc_pack[3] = via_point.Chessboard;
+			count += 2;
+		}
+		if((require_data & 0b1000) == 8){
+			//debug_count+=8;
+			output_package[5] = via_point.j1 / 256;
+			output_package[6] = via_point.j1 % 256;
+			crc_pack[4] = via_point.j1;
+			count+=2;
+		}
+		if((require_data & 0b0100) == 4){
+			//debug_count+=4;
+			output_package[7] = via_point.j2 / 256;
+			output_package[8] = via_point.j2 % 256;
+			crc_pack[5] = via_point.j2;
+			count+=2;
+		}
+		if((require_data & 0b0010) == 2){
+			//debug_count+=2;
+			output_package[9] = via_point.j3 / 256;
+			output_package[10] = via_point.j3 % 256;
+			crc_pack[6] = via_point.j3;
+			count+=2;
+		}
+		if((require_data & 0b0001) == 1){
+			//debug_count+=1;
+			output_package[11] = via_point.j4 / 256;
+			output_package[12] = via_point.j4 % 256;
+			crc_pack[7] = via_point.j4;
+			count+=2;
+		}
+		output_package[1] = count;
+		crc_pack[1] = output_package[1];
+		calculate_crc = update_crc(0, crc_pack, sizeof(crc_pack));
+		output_package[13] = calculate_crc / 256;
+		output_package[14] = calculate_crc % 256;
+		HAL_UART_Transmit_DMA(&huart3, output_package, count+1);
+	}
+	else if(inst == 3){
+		if(num_joint == 8){
+			output_package[3] = via_point.j1 / 256;
+			output_package[4] = via_point.j1 % 256;
+			crc_pack[3] = via_point.j1;
+			count+=2;
+		}
+		else if(num_joint == 4){
+			output_package[3] = via_point.j2 / 256;
+			output_package[4] = via_point.j2 % 256;
+			crc_pack[3] = via_point.j2;
+			count+=2;
+		}
+		else if(num_joint == 2){
+			output_package[3] = via_point.j3 / 256;
+			output_package[4] = via_point.j3 % 256;
+			crc_pack[3] = via_point.j3;
+			count+=2;
+		}
+		else if(num_joint == 1){
+			output_package[3] = via_point.j4 / 256;
+			output_package[4] = via_point.j4 % 256;
+			crc_pack[3] = via_point.j4;
+			count+=2;
+		}
+		output_package[1] = count;
+		crc_pack[1] = output_package[1];
+		calculate_crc = update_crc(0, crc_pack, sizeof(crc_pack));
+		output_package[5] = calculate_crc / 256;
+		output_package[6] = calculate_crc % 256;
+		HAL_UART_Transmit_DMA(&huart3, output_package, count+1);
+	}
+	else if(inst == 4 || inst == 5){
+		output_package[3] = via_point.j1 / 256;
+		output_package[4] = via_point.j1 % 256;
+		output_package[5] = via_point.j2 / 256;
+		output_package[6] = via_point.j2 % 256;
+		output_package[7] = via_point.j3 / 256;
+		output_package[8] = via_point.j3 % 256;
+		output_package[9] = via_point.j4 / 256;
+		output_package[10] = via_point.j4 % 256;
+		crc_pack[3] = via_point.j1;
+		crc_pack[4] = via_point.j2;
+		crc_pack[5] = via_point.j3;
+		crc_pack[6] = via_point.j4;
+		output_package[1] = 12;
+		crc_pack[1] = output_package[1];
+		calculate_crc = update_crc(0, crc_pack, sizeof(crc_pack));
+		output_package[11] = calculate_crc / 256;
+		output_package[12] = calculate_crc % 256;
+		HAL_UART_Transmit_DMA(&huart3, output_package, 13);
+	}
+	else if(inst == 6){
+		output_package[3] = (uint8_t)(traj_T);
+		output_package[4] = (uint8_t)(traj_t * 1000);
+		output_package[5] = via_point.j1 / 256;
+		output_package[6] = via_point.j1 % 256;
+		output_package[7] = via_point.j2 / 256;
+		output_package[8] = via_point.j2 % 256;
+		output_package[9] = via_point.j3 / 256;
+		output_package[10] = via_point.j3 % 256;
+		output_package[11] = via_point.j4 / 256;
+		output_package[12] = via_point.j4 % 256;
+		crc_pack[3] = output_package[3];
+		crc_pack[4] = output_package[4];
+		crc_pack[5] = via_point.j1;
+		crc_pack[6] = via_point.j2;
+		crc_pack[7] = via_point.j3;
+		crc_pack[8] = via_point.j4;
+		output_package[1] = 14;
+		crc_pack[1] = output_package[1];
+		calculate_crc = update_crc(0, crc_pack, sizeof(crc_pack));
+		output_package[13] = calculate_crc / 256;
+		output_package[14] = calculate_crc % 256;
+		HAL_UART_Transmit_DMA(&huart3, output_package, 15);
+	}
+}
+void send_error(){
+	memset(crc_pack,0,sizeof(crc_pack));
+	memset(output_package,0,sizeof(output_package));
+	output_package[0] = 0xFF;
+	output_package[1] = 5;
+	output_package[2] = 0xEE;
+	output_package[3] = (error_package.error_type << 4) | error_package.error_info;
+	debug_count = strlen(output_package);
+	for(int  i = 0;i <= strlen(output_package);i++){
+		crc_pack[i] = output_package[i];
+	}
+	calculate_crc = update_crc(0,crc_pack,sizeof(crc_pack)/2);
+	output_package[4] = calculate_crc / 256;
+	output_package[5] = calculate_crc % 256;
+	HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
+}
+
 //callback function
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin == GPIO_PIN_2){
