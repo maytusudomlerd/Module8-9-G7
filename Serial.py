@@ -36,7 +36,6 @@ def Get_Data_From_User():
         Instruction = 1
         print('function is not ready now')
         # print(Get_Tx_Package([Instruction]))
-        #Grinex.write(Serial.to_byte(Get_Tx_Package([Instruction])))
     # Set Home
     elif(User_Command == '2'):
         Instruction = 2
