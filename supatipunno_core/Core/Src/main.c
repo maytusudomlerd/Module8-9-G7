@@ -19,10 +19,10 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "string.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -166,12 +166,12 @@ static void send_error();
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */  HAL_Init();
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -223,20 +223,19 @@ int main(void)
 
 
 
-  via_point.Chessboard = 1234;
-  via_point.j1 = 123;
-  via_point.j2 = 123;
-  via_point.j3 = 123;
-  via_point.j4 = 123;
-  send_feedback(6);
+//  via_point.Chessboard = 1234;
+//  via_point.j1 = 123;
+//  via_point.j2 = 123;
+//  via_point.j3 = 123;
+//  via_point.j4 = 123;
+//  send_feedback(6);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  /*
-	   * switch(state){
+	  switch(state){
 	  	  case 0:
 	  		  sprintf(output_package, "Idle State Give Me Your Command.");
 	  		  HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
@@ -254,45 +253,49 @@ int main(void)
 			  }
 			  break;
 	  	  case 2:
-	  		  sprintf(output_package, "Loading to Home Position.....");
-	  		  HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
-	  		  //set_home();
-	  		  command_finish = 1;
-	  		  package_count = 2;
-	  		  if(command_finish)state = 0;
+//	  		  sprintf(output_package, "Loading to Home Position.....");
+//	  		  HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
+//	  		  //set_home();
+//	  		  command_finish = 1;
+//	  		  package_count = 2;
+//	  		  if(command_finish)state = 0;
+			  package_count = 3;
+			  state = 0;
 	  		  break;
 	  	  case 3:
-	  		sprintf(output_package, "Ping Mode %d",Ping_state);
-	  		HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
-	  		if( (process_package.parameter[0] & 0x8)>>8 == 1){
-	  			HAL_TIM_Base_Start(&htim7);
-	  			//manage data that push to high level
-	  			command_finish = 1;
-	  		}
-	  		else{
-	  			HAL_TIM_Base_Stop(&htim7);
-	  			command_finish = 1;
-	  		}
-	  		if(command_finish)state = 0;
+//	  		sprintf(output_package, "Ping Mode %d",Ping_state);
+//	  		HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
+//	  		if( (process_package.parameter[0] & 0x8)>>8 == 1){
+//	  			HAL_TIM_Base_Start(&htim7);
+//	  			//manage data that push to high level
+//	  			command_finish = 1;
+//	  		}
+//	  		else{
+//	  			HAL_TIM_Base_Stop(&htim7);
+//	  			command_finish = 1;
+//	  		}
+//	  		if(command_finish)state = 0;
+	  		package_count = 3;
+	  		state = 0;
 	  		break;
 	  	  case 4:
 	  		package_count = 4;
 	  		//if(command_finish)state = 0;
+	  		state = 0;
 	  		break;
 	  	  case 5:
 	  		package_count = 5;
-	  		  //state = 0;
+	  		state = 0;
 	  		break;
 	  	  case 6:
 	  		package_count = 6;
-	  		  //state = 0;
+	  		state = 0;
 	  		break;
 	  	  case 7:
 	  		package_count = 7;
-	  		  //state = 0;
+	  		state = 0;
 	  		break;
 	  }
-	  */
 
 
 
@@ -1290,7 +1293,7 @@ uint16_t update_crc(uint16_t result, uint16_t *data_pack, uint16_t buff_size){
 	        0x8213, 0x0216, 0x021C, 0x8219, 0x0208, 0x820D, 0x8207, 0x0202
 	    };
 
-	    for(j = 0; j < buff_size-1; j++)
+	    for(j = 0; j <= buff_size-1; j++)
 	    {
 	        i = ((uint16_t)(result >> 8) ^ data_pack[j]) & 0xFF;
 	        result = (result << 8) ^ crc_table[i];
@@ -1529,6 +1532,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+
 	if(huart == &huart3){
 		if(state == 0){
 			process_package.head = input_package[0];
@@ -1536,7 +1540,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 			process_package.instruction = input_package[2];
 			state = 1;
 		}
-
 	}
 	else if(huart == &huart5){
 		if(state == 0){

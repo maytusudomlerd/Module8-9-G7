@@ -1,4 +1,5 @@
 from serial import Serial
+import serial
 import numpy as np
 
 
@@ -40,7 +41,8 @@ def Get_Data_From_User():
     elif(User_Command == '2'):
         Instruction = 2
         print(Get_Tx_Package(Instruction,None))
-        Supatipunno.write(Serial.to_bytes(Get_Tx_Package(Instruction,None)))
+        Supatipunno.write(serial.to_bytes(Get_Tx_Package(Instruction,None)))
+        
     # Ping Mode
     elif(User_Command == '3'):
         Instruction = 3
@@ -49,13 +51,13 @@ def Get_Data_From_User():
             print('Ping Mode Enable\n')
             Parameter.append(1)
             print(Get_Tx_Package(Instruction, Parameter))
-            Supatipunno.write(Serial.to_bytes(Get_Tx_Package(Instruction, Parameter)))
+            Supatipunno.write(serial.to_bytes(Get_Tx_Package(Instruction, Parameter)))
         else:
             Ping_Flag = 0
             Parameter.append(0)
             print('Ping Mode Disable\n')
             print(Get_Tx_Package(Instruction, Parameter))
-            Supatipunno.write(Serial.to_bytes(Get_Tx_Package(Instruction, Parameter)))
+            Supatipunno.write(serial.to_bytes(Get_Tx_Package(Instruction, Parameter)))
     # Jog Joint
     elif(User_Command == '4'):
         JogJoint()
@@ -70,7 +72,6 @@ def Get_Data_From_User():
         Instruction = 7
         global Traj_coef
         print(Get_Tx_Package(Instruction,Traj_coef))
-        #Grinex.write(Serial.to_byte(Get_Tx_Package([Instruction],[Traj_coef])))
     elif(User_Command == '99'):
         return True
     else:
@@ -142,19 +143,19 @@ def JogJoint():
                 if(Joint_Number == 0x08):
                     Joint_Signed_Num = ((Joint_signed & 0x08)<<1) | Joint_Number
                     print(Get_Tx_Package(Instruction, [Joint_Signed_Num,abs_Position_Robot_Joint[0]]))
-                    Supatipunno.write(Serial.to_bytes(Get_Tx_Package(Instruction, [Joint_Signed_Num,abs_Position_Robot_Joint[0]])))
+                    Supatipunno.write(serial.to_bytes(Get_Tx_Package(Instruction, [Joint_Signed_Num,abs_Position_Robot_Joint[0]])))
                 elif(Joint_Number == 0x04):
                     Joint_Signed_Num = ((Joint_signed & 0x04)<<2) | Joint_Number
                     print(Get_Tx_Package(Instruction, [Joint_Signed_Num,abs_Position_Robot_Joint[1]]))
-                    Supatipunno.write(Serial.to_bytes(Get_Tx_Package(Instruction, [Joint_Signed_Num,abs_Position_Robot_Joint[1]])))
+                    Supatipunno.write(serial.to_bytes(Get_Tx_Package(Instruction, [Joint_Signed_Num,abs_Position_Robot_Joint[1]])))
                 elif(Joint_Number == 0x02):
                     Joint_Signed_Num = ((Joint_signed & 0x02)<<3) | Joint_Number
                     print(Get_Tx_Package(Instruction, [Joint_Signed_Num,abs_Position_Robot_Joint[2]]))
-                    Supatipunno.write(Serial.to_bytes(Get_Tx_Package(Instruction, [Joint_Signed_Num,abs_Position_Robot_Joint[2]])))
+                    Supatipunno.write(serial.to_bytes(Get_Tx_Package(Instruction, [Joint_Signed_Num,abs_Position_Robot_Joint[2]])))
                 elif(Joint_Number == 0x01):
                     Joint_Signed_Num = ((Joint_signed & 0x02)<<4) | Joint_Number
                     print(Get_Tx_Package(Instruction, [Joint_Signed_Num,abs_Position_Robot_Joint[3]]))
-                    Supatipunno.write(Serial.to_bytes(Get_Tx_Package(Instruction, [Joint_Signed_Num,abs_Position_Robot_Joint[3]])))
+                    Supatipunno.write(serial.to_bytes(Get_Tx_Package(Instruction, [Joint_Signed_Num,abs_Position_Robot_Joint[3]])))
 
                 
                 #Grinex.write(Serial.to_byte(Get_Tx_Package([Instruction], [Joint_signed,abs_Position_Robot_Joint])))
@@ -237,7 +238,7 @@ def JogCartesian():
                 #print('Task sign = '+ str(Task_signed) )
                 abs_Position_Robot_Task = [abs(int(Position_Robot_Task[0])), abs(int(Position_Robot_Task[1])), abs(int(Position_Robot_Task[2])), abs(int(Position_Robot_Task[3]))]
                 print(Get_Tx_Package(Instruction, [Task_signed]+abs_Position_Robot_Task))
-                Supatipunno.write(Serial.to_bytes(Get_Tx_Package(Instruction, [Task_signed]+abs_Position_Robot_Task)))
+                Supatipunno.write(serial.to_bytes(Get_Tx_Package(Instruction, [Task_signed]+abs_Position_Robot_Task)))
                 # Task -IPK-> config | split sign | send !
             Jog_state = 0
         elif(Jog_state == '2'):
@@ -312,7 +313,7 @@ def Move():
                                 #print('Task sign = '+ str(Task_signed) )
                         abs_Position_Robot_Joint = [abs(int(Position_Robot_Joint[0])), abs(int(Position_Robot_Joint[1])), abs(int(Position_Robot_Joint[2])), abs(int(Position_Robot_Joint[3]))]
                         print(Get_Tx_Package(Instruction, [Joint_signed]+abs_Position_Robot_Joint))
-                        Supatipunno.write(Serial.to_bytes(Get_Tx_Package(Instruction, [Joint_signed]+abs_Position_Robot_Joint)))
+                        Supatipunno.write(serial.to_bytes(Get_Tx_Package(Instruction, [Joint_signed]+abs_Position_Robot_Joint)))
                     except:
                         print('Invalid Parameter\n')
                         pass
@@ -335,7 +336,7 @@ def Move():
                                 #print('Task sign = '+ str(Task_signed) )
                         abs_Position_Robot_Task = [abs(int(Position_Robot_Task[0])), abs(int(Position_Robot_Task[1])), abs(int(Position_Robot_Task[2])), abs(int(Position_Robot_Task[3]))]
                         print(Get_Tx_Package(Instruction, [Joint_signed]+abs_Position_Robot_Joint))
-                        Supatipunno.write(Serial.to_bytes(Get_Tx_Package(Instruction, [Joint_signed]+abs_Position_Robot_Joint)))
+                        Supatipunno.write(serial.to_bytes(Get_Tx_Package(Instruction, [Joint_signed]+abs_Position_Robot_Joint)))
                         #.write(Serial.to_byte(Get_Tx_Package([Instruction], [Task_signed,Parameter])))
                     except:
                         print('Invalid Parameter\n')
@@ -376,7 +377,7 @@ def Get_Tx_Package(Instruction, Parameter = None):
     Tx_Package.insert(2,Instruction)
     
     while len(Tx_Package) != 10:
-        Tx_Package.append(0)
+        Tx_Package.append(np.uint16(0)
     # CRC Calcualte
     crc = Update_CRC(Target_Data = np.uint16(Tx_Package))
     Byte_Tx_Package[-2] = crc // 256
@@ -476,3 +477,4 @@ if __name__ == "__main__":
         except:
             print('Get Package fail \n\n')
             break
+
