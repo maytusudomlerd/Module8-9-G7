@@ -171,7 +171,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+z,  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -221,8 +221,6 @@ int main(void)
   HAL_UART_Receive_DMA(&huart3, input_package, 17);
   HAL_UART_Receive_DMA(&huart5, input_package, 17);
 
-
-
 //  via_point.Chessboard = 1234;
 //  via_point.j1 = 123;
 //  via_point.j2 = 123;
@@ -253,34 +251,15 @@ int main(void)
 			  }
 			  break;
 	  	  case 2:
-//	  		  sprintf(output_package, "Loading to Home Position.....");
-//	  		  HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
-//	  		  //set_home();
-//	  		  command_finish = 1;
-//	  		  package_count = 2;
-//	  		  if(command_finish)state = 0;
 			  package_count = 3;
 			  state = 0;
 	  		  break;
 	  	  case 3:
-//	  		sprintf(output_package, "Ping Mode %d",Ping_state);
-//	  		HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
-//	  		if( (process_package.parameter[0] & 0x8)>>8 == 1){
-//	  			HAL_TIM_Base_Start(&htim7);
-//	  			//manage data that push to high level
-//	  			command_finish = 1;
-//	  		}
-//	  		else{
-//	  			HAL_TIM_Base_Stop(&htim7);
-//	  			command_finish = 1;
-//	  		}
-//	  		if(command_finish)state = 0;
 	  		package_count = 3;
 	  		state = 0;
 	  		break;
 	  	  case 4:
 	  		package_count = 4;
-	  		//if(command_finish)state = 0;
 	  		state = 0;
 	  		break;
 	  	  case 5:
@@ -296,9 +275,6 @@ int main(void)
 	  		state = 0;
 	  		break;
 	  }
-
-
-
 
     /* USER CODE END WHILE */
 
@@ -1315,6 +1291,11 @@ uint8_t verify_package(){
 	//jog joint
 	else if(process_package.instruction == 0x04){
 		process_package.parameter[0] = input_package[3];
+		feedback_flag = (process_package.parameter[0] % 32) >> 5;
+		gripper_status = (process_package.parameter[0] % 16) >> 4;
+		if((process_package.parameter[0] % 15) == 8){
+			via_point.j1 =
+		}
 		process_package.parameter[1] = input_package[4] << 8 | input_package[5];
 		process_package.crc = input_package[15] << 8 | input_package[16];
 	}
