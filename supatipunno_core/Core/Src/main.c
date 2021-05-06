@@ -47,6 +47,11 @@ typedef struct via_point{
 	uint16_t j4;
 	uint16_t Chessboard;
 }via_point_typedef;
+
+typedef struct flag{
+	uint8_t home_flag = 0;
+	uint8_t status_flag = 0;
+}flag_typedef;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -95,13 +100,12 @@ uint8_t state = 0;
 uint8_t input_package_flag = 0;
 uint8_t command_finish = 0;
 via_point_typedef via_point;
-double traj_T = 10;
-double traj_t = 0.001;
 uint8_t num_joint = 8;
 uint8_t require_data = 0xFF;
 //communication
 package_typedef process_package;
 error_package_typedef error_package;
+flag_typedef flag;
 uint8_t input_package[17];
 uint8_t output_package[50];
 uint8_t package_count = 0;
@@ -149,7 +153,7 @@ static void Update_Period(uint8_t Motor_Number[],double Freequency,float Duty_Cy
 static uint16_t update_crc(uint16_t result, uint16_t *data_pack, uint16_t buff_size);
 static uint8_t verify_package();
 static void send_ack(uint8_t inst);
-static void send_feedback(uint8_t inst);
+static void send_status(uint8_t inst);
 static void send_error();
 
 /* USER CODE END PFP */
@@ -171,7 +175,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-z,  HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -238,7 +242,7 @@ z,  HAL_Init();
 	  		  sprintf(output_package, "Idle State Give Me Your Command.");
 	  		  HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
 	  		 	 break;
-	  	  case 1:
+	  	  case 99:
 			  result_verify_package = verify_package();
 			  if(result_verify_package == 1){
 				  state = process_package.instruction;
@@ -250,9 +254,23 @@ z,  HAL_Init();
 				  state = 0;
 			  }
 			  break;
+	  	  case 1:
+			  send_ack(process_package.instruction);
+			  Home_Set();
+			  if(flag.home_flag){
+				  send_ack(process_package.instruction);
+				  flag.home_flag = 0;
+				  state = 0;
+			  }
+			  break;
 	  	  case 2:
-			  package_count = 3;
-			  state = 0;
+	  		  send_ack(process_package.instruction);
+	  		  send_status(process_package.parameter[0]);
+	  		  if(flag.status_flag){
+	  			send_ack(process_package.instruction);
+	  			flag.status_flag = 0;
+	  			state = 0;
+	  		  }
 	  		  break;
 	  	  case 3:
 	  		package_count = 3;
@@ -275,7 +293,6 @@ z,  HAL_Init();
 	  		state = 0;
 	  		break;
 	  }
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -1199,6 +1216,9 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 //user function
+void Home_set(){
+	flag.home_flag = 1;
+}
 void Update_Period(uint8_t Motor_Number[],double Freequency,float Duty_Cycle){
 
 	/*******************************************************************************
@@ -1280,7 +1300,7 @@ uint16_t update_crc(uint16_t result, uint16_t *data_pack, uint16_t buff_size){
 uint8_t verify_package(){
 	memset(process_package.parameter,0,sizeof(process_package.parameter));
 	//debug mode
-	if(process_package.instruction == 0x03){
+	if(process_package.instruction == 0x01){
 		process_package.parameter[0] = input_package[3];
 		process_package.crc = input_package[15] << 8 | input_package[16];
 	}
@@ -1289,18 +1309,12 @@ uint8_t verify_package(){
 		process_package.crc = input_package[15] << 8 | input_package[16];
 	}
 	//jog joint
-	else if(process_package.instruction == 0x04){
+	else if(process_package.instruction == 0x03){
 		process_package.parameter[0] = input_package[3];
-		feedback_flag = (process_package.parameter[0] % 32) >> 5;
-		gripper_status = (process_package.parameter[0] % 16) >> 4;
-		if((process_package.parameter[0] % 15) == 8){
-			via_point.j1 =
-		}
-		process_package.parameter[1] = input_package[4] << 8 | input_package[5];
-		process_package.crc = input_package[15] << 8 | input_package[16];
+
 	}
 	//Cartesian jog, Move
-	else if(process_package.instruction == 0x05 || process_package.instruction == 0x06){
+	else if(process_package.instruction == 0x04 || process_package.instruction == 0x05){
 		uint8_t index =1;
 		process_package.parameter[0] = input_package[3];
 		for(int i = 4;i <=10 ;i+=2){
@@ -1310,7 +1324,7 @@ uint8_t verify_package(){
 		process_package.crc = input_package[15] << 8 | input_package[16];
 	}
 	//Trajectory move
-	else if(process_package.instruction == 0x07){
+	else if(process_package.instruction == 0x06){
 		uint8_t index =0;
 		for(int i = 3;i <=13 ;i+=2){
 			process_package.parameter[index] = input_package[i] << 8 | input_package[i+1];
@@ -1352,7 +1366,7 @@ void send_ack(uint8_t inst){
 	output_package[4] = calculate_crc % 256;
 	HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
 }
-void send_feedback(uint8_t inst){
+void send_status(uint16_t require_data){
 	uint8_t count = 4;
 	output_package[0] = 0xFF;
 	output_package[2] = inst;
@@ -1400,6 +1414,7 @@ void send_feedback(uint8_t inst){
 		output_package[13] = calculate_crc / 256;
 		output_package[14] = calculate_crc % 256;
 		HAL_UART_Transmit_DMA(&huart3, output_package, count+1);
+		status_flag =1;
 	}
 	else if(inst == 3){
 		if(num_joint == 8){
@@ -1451,7 +1466,6 @@ void send_feedback(uint8_t inst){
 		calculate_crc = update_crc(0, crc_pack, sizeof(crc_pack));
 		output_package[11] = calculate_crc / 256;
 		output_package[12] = calculate_crc % 256;
-		HAL_UART_Transmit_DMA(&huart3, output_package, 13);
 	}
 	else if(inst == 6){
 		output_package[3] = (uint8_t)(traj_T);
@@ -1476,6 +1490,7 @@ void send_feedback(uint8_t inst){
 		output_package[13] = calculate_crc / 256;
 		output_package[14] = calculate_crc % 256;
 		HAL_UART_Transmit_DMA(&huart3, output_package, 15);
+		flag.status_flag = 1;
 	}
 }
 void send_error(){
@@ -1519,7 +1534,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 			process_package.head = input_package[0];
 			process_package.length = input_package[1];
 			process_package.instruction = input_package[2];
-			state = 1;
+			state = 99;
 		}
 	}
 	else if(huart == &huart5){
@@ -1527,7 +1542,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 			process_package.head = input_package[0];
 			process_package.length = input_package[1];
 			process_package.instruction = input_package[2];
-			state = 1;
+			state = 99;
 		}
 
 	}
