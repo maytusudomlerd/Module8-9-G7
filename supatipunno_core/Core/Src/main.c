@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "string.h"
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,12 +47,12 @@ typedef struct via_point{
 }via_point_typedef;
 
 typedef struct flag{
-	uint8_t home_flag = 0;
-	uint8_t status_flag = 0;
-	uint8_t feedback_flag = 0;
-	uint8_t at_viapoint_flag = 0;
-	uint8_t firsttime = 0;
-	uint8_t controlloop=0;
+	uint8_t home_flag;
+	uint8_t status_flag;
+	uint8_t feedback_flag;
+	uint8_t at_viapoint_flag ;
+	uint8_t firsttime;
+	uint8_t controlloop;
 }flag_typedef;
 /* USER CODE END PTD */
 
@@ -98,8 +99,8 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 /* USER CODE BEGIN PV */
 //system & flag
 //test
-float Traj_T;
-float Traj_t;
+float traj_T;
+float traj_t;
 
 uint8_t state = 0;
 uint8_t input_package_flag = 0;
@@ -121,7 +122,7 @@ uint16_t Dir_Motor[4] = {0};
 uint16_t EncoderValue16[4]={0};  //J1 J2 J3 J4
 
 //debug
-uint16_t debug_count = 0;
+uint16_t debug_count = 10;
 uint16_t calculate_crc=0;
 uint16_t crc_pack[10];
 
@@ -156,10 +157,10 @@ static void Update_Period(uint8_t Motor_Number[],double Freequency,float Duty_Cy
 static uint16_t update_crc(uint16_t result, uint16_t *data_pack, uint16_t buff_size);
 static uint8_t verify_package();
 static void send_ack(uint8_t inst);
-static void send_feedback();
+static void send_feedback(uint8_t inst);
 static void send_status(uint8_t require_data);
 
-static void send_error(uint16 inst);
+static void send_error();
 
 /* USER CODE END PFP */
 
@@ -224,18 +225,17 @@ int main(void)
   HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);
   HAL_TIM_Encoder_Start(&htim8, TIM_CHANNEL_ALL);
   //start Timer For Control Loop
-  HAL_TIM_Base_Start(&htim6);
+  HAL_TIM_Base_Start_IT(&htim6);
   //HAL_TIM_Base_Start(&htim7);
   //start DMA
   HAL_UART_Receive_DMA(&huart3, input_package, 17);
   HAL_UART_Receive_DMA(&huart5, input_package, 17);
 
-//  via_point.Chessboard = 1234;
-//  via_point.j1 = 123;
-//  via_point.j2 = 123;
-//  via_point.j3 = 123;
-//  via_point.j4 = 123;
-//  send_feedback(6);
+  via_point.Chessboard = 1234;
+  via_point.joint[0] = 123;
+  via_point.joint[1] = 123;
+  via_point.joint[2] = 123;
+  via_point.joint[3] = 123;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -244,8 +244,6 @@ int main(void)
   {
 	  switch(state){
 	  	  case 0:
-	  		  sprintf(output_package, "Idle State Give Me Your Command.");
-	  		  HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
 	  		 	 break;
 	  	  case 99:
 			  result_verify_package = verify_package();
@@ -254,14 +252,14 @@ int main(void)
 			  }
 			  else{
 				  //send error package
-				  send_error();
+				  //send_error();
 				  state = 0;
 			  }
 			  break;
 		//set home
 	  	  case 1:
 			  send_ack(process_package.instruction);
-			  Home_Set();
+			  sethome();
 			  if(flag.home_flag){
 				  send_ack(process_package.instruction);
 				  flag.home_flag = 0;
@@ -280,7 +278,8 @@ int main(void)
 	  		  break;
 	  	//jog joint
 	  	  case 3:
-	  		if(flag.firsttime){
+	  		if(flag.firsttime == 0){
+	  			uint8_t moving_joint = 0;
 				send_ack(process_package.instruction);
 				if(process_package.parameter[0] & 0b00010000){
 					flag.feedback_flag = 1;
@@ -297,6 +296,9 @@ int main(void)
 
 	  			//position control function
 
+	  			//fortest
+	  			flag.at_viapoint_flag = 1;
+
 				if(flag.feedback_flag){
 					send_feedback(process_package.instruction);
 				}
@@ -312,13 +314,67 @@ int main(void)
 	  		break;
 	  	//linear jog
 	  	  case 4:
-	  		package_count = 4;
-	  		state = 0;
+	  		if(flag.firsttime == 0){
+				send_ack(process_package.instruction);
+				if(process_package.parameter[0] & 0b00010000){
+					flag.feedback_flag = 1;
+				}
+				for(int i = 0;i<4;i++){
+					via_point.joint[i] = process_package.parameter[i+1];
+				}
+				flag.firsttime = 1;
+			}
+	  		if(flag.controlloop){
+
+				//position control function
+
+	  			//fortest
+	  			flag.at_viapoint_flag = 1;
+
+				if(flag.feedback_flag){
+					send_feedback(process_package.instruction);
+				}
+				flag.controlloop = 0;
+			}
+			if(flag.at_viapoint_flag){
+				send_ack(process_package.instruction);
+				flag.at_viapoint_flag = 0;
+				flag.feedback_flag = 0;
+				flag.firsttime = 0 ;
+				state = 0;
+			}
 	  		break;
 	  	//move
 	  	  case 5:
-	  		package_count = 5;
-	  		state = 0;
+			if(flag.firsttime == 0){
+				send_ack(process_package.instruction);
+				if(process_package.parameter[0] & 0b00010000){
+					flag.feedback_flag = 1;
+				}
+				for(int i = 0;i<4;i++){
+					via_point.joint[i] = process_package.parameter[i+1];
+				}
+				flag.firsttime = 1;
+			}
+			if(flag.controlloop){
+
+				//casecade control function
+
+				//fortest
+				flag.at_viapoint_flag = 1;
+
+				if(flag.feedback_flag){
+					send_feedback(process_package.instruction);
+				}
+				flag.controlloop = 0;
+			}
+			if(flag.at_viapoint_flag){
+				send_ack(process_package.instruction);
+				flag.at_viapoint_flag = 0;
+				flag.feedback_flag = 0;
+				flag.firsttime = 0 ;
+				state = 0;
+			}
 	  		break;
 	  	//trajectory
 	  	  case 6:
@@ -1254,7 +1310,7 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 //user function
-void Home_set(){
+void sethome(){
 	flag.home_flag = 1;
 }
 void Update_Period(uint8_t Motor_Number[],double Freequency,float Duty_Cycle){
@@ -1338,18 +1394,19 @@ uint16_t update_crc(uint16_t result, uint16_t *data_pack, uint16_t buff_size){
 uint8_t verify_package(){
 	memset(process_package.parameter,0,sizeof(process_package.parameter));
 	//debug mode
-	if(process_package.instruction == 0x01){
+	if(process_package.instruction == 0x02){
 		process_package.parameter[0] = input_package[3];
 		process_package.crc = input_package[15] << 8 | input_package[16];
 	}
 	//set home
-	else if(process_package.instruction == 0x02){
+	else if(process_package.instruction == 0x01){
 		process_package.crc = input_package[15] << 8 | input_package[16];
 	}
 	//jog joint
 	else if(process_package.instruction == 0x03){
 		process_package.parameter[0] = input_package[3];
-
+		process_package.parameter[1] = input_package[4] << 8 | input_package[5];
+		process_package.crc = input_package[15] << 8 | input_package[16];
 	}
 	//Cartesian jog, Move
 	else if(process_package.instruction == 0x04 || process_package.instruction == 0x05){
@@ -1377,7 +1434,6 @@ uint8_t verify_package(){
 	for(int i = 3;i <=8 ;i++){
 		crc_pack[i] = process_package.parameter[i-3];
 	}
-	debug_count = sizeof(crc_pack)/2;
 	calculate_crc = update_crc(0,crc_pack,sizeof(crc_pack)/2);
 	if(process_package.crc == calculate_crc){
 	  return 1;
@@ -1395,41 +1451,82 @@ void send_ack(uint8_t inst){
 	output_package[0] = 0xFF;
 	output_package[1] = 4;
 	output_package[2] = (0x0A << 4) | inst;
-	debug_count = strlen(output_package);
-	for(int  i = 0;i <= strlen(output_package);i++){
+	for(int  i = 0;i <= 3;i++){
 			crc_pack[i] = output_package[i];
 	}
 	calculate_crc = update_crc(0,crc_pack,sizeof(crc_pack)/2);
 	output_package[3] = calculate_crc / 256;
 	output_package[4] = calculate_crc % 256;
-	HAL_UART_Transmit_DMA(&huart3, output_package, strlen(output_package));
+	HAL_UART_Transmit(&huart3, output_package, 5,100);
 }
-void send_status(uint8_require_data){
-	uint8_t out_count=3,crc_count=3;
+void send_status(uint8_t require_data){
+	uint8_t count = 2;
 	memset(crc_pack,0,sizeof(crc_pack));
 	memset(output_package,0,sizeof(output_package));
 
 	output_package[0] = 0xFF;
-	output_package[2] = 1;
-	for(int i=0;i<=8;i++){
-		if((require_data >> i) == 1){
-			output_package[out_count] = via_point.Chessboard / 256;
-			output_package[out_count+1] = via_point.Chessboard % 256;
-			crc_pack[crc_count] = via_point.Chessboard;
-		}
-		out_count += 2;
-		crc_count += 1;
+	output_package[2] = 2;
+	crc_pack[0] = 0xFF;
+	crc_pack[2] = 1;
+
+	if(((require_data & 128) >> 7) == 1){
+		output_package[3] = via_point.Chessboard / 256;
+		output_package[4] = via_point.Chessboard % 256;
+		crc_pack[3] = via_point.Chessboard;
+		count+=2;
 	}
-	output_package[1] = out_count+5;
+	if(((require_data & 64) >> 6) == 1){
+		output_package[5] = via_point.joint[0] / 256;
+		output_package[6] = via_point.joint[0] % 256;
+		crc_pack[4] = via_point.joint[0];
+		count+=2;
+	}
+	if(((require_data & 32) >> 5) == 1){
+		output_package[7] = via_point.joint[1] / 256;
+		output_package[8] = via_point.joint[1] % 256;
+		crc_pack[5] = via_point.joint[1];
+		count+=2;
+	}
+	if(((require_data & 16) >> 4) == 1){
+		output_package[9] = via_point.joint[2] / 256;
+		output_package[10] = via_point.joint[2] % 256;
+		crc_pack[6] = via_point.joint[2];
+		count+=2;
+	}
+	if(((require_data & 8) >> 3) == 1){
+		output_package[11] = via_point.joint[3] / 256;
+		output_package[12] = via_point.joint[3] % 256;
+		crc_pack[7] = via_point.joint[3];
+		count+=2;
+	}
+	if(((require_data & 4) >> 2) == 1){
+		output_package[13] = 0 / 256;
+		output_package[14] = 0 % 256;
+		crc_pack[8] = 0;
+		count+=2;
+	}
+	if(((require_data & 2) >> 1) == 1){
+		output_package[15] = 0 / 256;
+		output_package[16] = 0 % 256;
+		crc_pack[9] = via_point.Chessboard;
+		count+=2;
+	}
+	if((require_data & 1) == 1){
+		output_package[17] = 0 / 256;
+		output_package[18] = 0 % 256;
+		crc_pack[10] = via_point.Chessboard;
+		count+=2;
+	}
+
+	output_package[1] = count+2;
 	crc_pack[1] = output_package[1];
 	calculate_crc = update_crc(0, crc_pack, sizeof(crc_pack));
-	output_package[19] = calculate_crc / 256;
-	output_package[20] = calculate_crc % 256;
-	HAL_UART_Transmit_DMA(&huart3, output_package, output_package[1]);
+	output_package[count+1] = calculate_crc / 256;
+	output_package[count+2] = calculate_crc % 256;
+	HAL_UART_Transmit(&huart3, output_package, output_package[1]+1,100);
 	flag.status_flag = 1;
 }
-void send_feedback(uint16 inst){
-	uint8_t count = 4;
+void send_feedback(uint8_t inst){
 	output_package[0] = 0xFF;
 	output_package[2] = inst;
 	crc_pack[0] = 0xFF;
@@ -1453,7 +1550,7 @@ void send_feedback(uint16 inst){
 		calculate_crc = update_crc(0, crc_pack, sizeof(crc_pack));
 		output_package[11] = calculate_crc / 256;
 		output_package[12] = calculate_crc % 256;
-		HAL_UART_Transmit_DMA(&huart3, output_package, 14);
+		HAL_UART_Transmit(&huart3, output_package, 13,100);
 		flag.feedback_flag = 1;
 	}
 	else if(inst == 6){
@@ -1478,7 +1575,7 @@ void send_feedback(uint16 inst){
 		calculate_crc = update_crc(0, crc_pack, sizeof(crc_pack));
 		output_package[13] = calculate_crc / 256;
 		output_package[14] = calculate_crc % 256;
-		HAL_UART_Transmit_DMA(&huart3, output_package, 15);
+		HAL_UART_Transmit(&huart3, output_package, 15,100);
 		flag.feedback_flag = 1;
 	}
 }
@@ -1489,7 +1586,6 @@ void send_error(){
 	output_package[1] = 5;
 	output_package[2] = 0xEE;
 	output_package[3] = (error_package.error_type << 4) | error_package.error_info;
-	debug_count = strlen(output_package);
 	for(int  i = 0;i <= strlen(output_package);i++){
 		crc_pack[i] = output_package[i];
 	}
@@ -1500,6 +1596,7 @@ void send_error(){
 }
 
 //callback function
+
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin == GPIO_PIN_2){
 		Home_Set[0] ^= 1;
@@ -1535,20 +1632,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 		}
 
 	}
-	else{
-		debug_count = 10;
-	}
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
 	if(htim == &htim6){
+		//debug_count += 1;
+		flag.controlloop = 1;
 		//update variable for do control loop
-		state = 6;
 	}
-//	else if(htim == &htim7){
-//		//debug mode
-//	}
+	else{
+		debug_count = 99;
+	}
 }
 
 /* USER CODE END 4 */
