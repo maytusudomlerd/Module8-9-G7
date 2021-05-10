@@ -8,11 +8,12 @@ format_msg = 'utf-8'
 
 destination = socket.gethostbyname(socket.gethostname())
 port = 6969
-addr =(destination,port)
+addr =('localhost',port)
 
 client = socket.socket(socket.AF_INET,socket.SOCK_STREAM)   # ipv4 , type : stream
 client.connect(addr)
 
+recieve_list = []
 
 def send(msg):
     message = msg.encode(format_msg)
@@ -28,13 +29,10 @@ def strtolist(str):
     return intlist
 
 if __name__ == "__main__":
-    count = 0
-    while count != 3:
-        send(listtostr(test_msg))
-        recieve_list = strtolist(client.recv(50).decode(format_msg))
-        print(recieve_list)
-        test_msg[1] = test_msg[1] + 10
-        count += 1
+    send(listtostr(test_msg))
+    recieve_list = strtolist(client.recv(50).decode(format_msg))
+    recieve_list = strtolist(client.recv(50).decode(format_msg))
+    print(recieve_list)
     
     
 

@@ -8,12 +8,13 @@ import threading
 
 port = 6969
 server = socket.gethostbyname(socket.gethostname())
-addr = (server,port)
+addr = ('localhost',port)
 
 format_msg = 'utf-8'
 
 msg = []
-disconnected_command = [0xFF,0x2,0x99]
+disconnected_command = [255,99]
+
 #initialize socket
 server = socket.socket(socket.AF_INET,socket.SOCK_STREAM)   # ipv4 , type : stream
 server.bind(addr)
@@ -27,11 +28,15 @@ def handel_server(conn,addr):
         if(msg):
             list_msg = strtolist(msg)
             if(list_msg == disconnected_command):
+                print("\n[SHUTDOWN] server is shutting down ......")
                 connected = False
             else:
-                conn.send(listtostr(list_msg))
                 print(f"[RECIVED FROM {addr}] {list_msg}")
-                pass
+
+                pack_len = str(len(listtostr(disconnected_command))).encode(format_msg)
+                conn.send(pack_len)
+                conn.send(listtostr(disconnected_command))
+                
                 #implemet here
                 
     conn.close()
@@ -39,7 +44,7 @@ def handel_server(conn,addr):
 
 def start_server():
     server.listen()
-    print(f"[LISTENNING] Server is listening on {socket.gethostbyname(socket.gethostname())}")
+    print(f"[LISTENNING] Server is listening on {socket.gethostbyname('localhost')}")
     while True:
         conn , addr  = server.accept()
         thread = threading.Thread(target=handel_server,args=(conn,addr))
