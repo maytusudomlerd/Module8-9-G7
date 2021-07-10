@@ -125,6 +125,7 @@ uint16_t EncoderValue16[4]={0};  //J1 J2 J3 J4
 uint16_t debug_count = 10;
 uint16_t calculate_crc=0;
 uint16_t crc_pack[10];
+uint16_t count = 0;
 
 //control
 
@@ -292,16 +293,18 @@ int main(void)
 				}
 				flag.firsttime = 1;
 	  		}
-	  		if(flag.controlloop){
+	  		if(flag.controlloop && flag.at_viapoint_flag == 0){
 
 	  			//position control function
 
 	  			//fortest
 	  			flag.at_viapoint_flag = 1;
 
-				if(flag.feedback_flag){
+				if(flag.feedback_flag && count == 1000){
 					send_feedback(process_package.instruction);
+					count = 0;
 				}
+				count++;
 				flag.controlloop = 0;
 	  		}
 	  		if(flag.at_viapoint_flag){
@@ -1563,7 +1566,7 @@ void send_feedback(uint8_t inst){
 		output_package[9] = via_point.joint[2] / 256;
 		output_package[10] = via_point.joint[2] % 256;
 		output_package[11] = via_point.joint[3] / 256;
-		output_package[12] = via_point.joint[03] % 256;
+		output_package[12] = via_point.joint[3] % 256;
 		crc_pack[3] = output_package[3];
 		crc_pack[4] = output_package[4];
 		crc_pack[5] = via_point.joint[0];

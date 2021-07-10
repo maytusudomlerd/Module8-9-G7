@@ -11,6 +11,7 @@
 		<item key="SmartImportRootWizardPage.STORE_NESTED_PROJECTS" value="true"/>
 		<item key="SmartImportRootWizardPage.STORE_CONFIGURE_NATURES" value="true"/>
 		<list key="org.eclipse.ui.internal.wizards.datatransfer.SmartImportRootWizardPage.knownSources">
+			<item value="E:\3.2\Week11-UART-Protocol-main\Week11-UART-Protocol-main\week11 Protocal"/>
 			<item value="E:\GitHub\Module8-9-G7\supatipunno_core"/>
 			<item value="E:\GitHub\Module8-9-G7\STM32H7"/>
 			<item value="E:\GitHub\Module8-9-G7"/>

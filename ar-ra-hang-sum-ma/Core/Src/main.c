@@ -27,7 +27,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -58,6 +57,7 @@ UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
+uint8_t my_data[16] = {0};
 
 /* USER CODE END PV */
 
@@ -78,6 +78,9 @@ static void MX_USART1_UART_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
+
+void read_data_from(uint8_t slave,uint8_t *data,uint16_t len);
+void write_data_from(uint8_t slave,uint8_t *data,uint16_t len);
 
 /* USER CODE END PFP */
 
@@ -135,6 +138,14 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  int a =0;
+	  if(a == HAL_GPIO_ReadPin(GPIOx, GPIO_Pin)){
+		  write_data_from(1, data, lenght_data);
+	  }
+	  else if(a == 2 ){
+		  write_data_from(2, data, lenght_data);
+	  }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -923,7 +934,60 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+//slave[3] = 1,2,3
+void read_data_from(uint8_t slave,uint8_t *data,uint16_t len){
+	if(slave == 1){
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 0);
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 1);
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 1);
+	}
+	else if(slave == 2)
+	{
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 0);
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 1);
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 0);
+	}
+	else if(slave == 3)
+	{
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 0);
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 0);
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 1);
+	}
+	else{
+		break;
+	}
 
+	//recieve data
+	HAL_SPI_Receive(&hspi3, data, len, 100);
+
+}
+
+void write_data_from(uint8_t slave,uint8_t *data,uint16_t len){
+
+	if(slave == 1){
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 0);
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 1);
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 1);
+	}
+	else if(slave == 2)
+	{
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 0);
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 1);
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 1);
+	}
+	else if(slave == 3)
+	{
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 1);
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 1);
+		HAL_GPIO_WritePin(GPIOx, GPIO_Pin, 0);
+	}
+	else{
+		break;
+	}
+
+	HAL_SPI_Transmit(&hspi3, data, len, 100);
+
+}
 /* USER CODE END 4 */
 
 /**
